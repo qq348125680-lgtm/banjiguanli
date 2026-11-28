@@ -10,7 +10,7 @@ function harness({roster=[{student_id:sid}],error=null}={}){
  const calls=[];const client={
   auth:{getUser:async()=>({data:{user:{id:uid}},error:null})},
   rpc:async(name,args)=>{calls.push({kind:'rpc',name,args});return name==='v7_cadre_roster'?{data:roster,error}:{data:{posted:true},error:null}},
-  from:table=>({insert:payload=>({select:()=>({single:async()=>{calls.push({kind:'insert',table,payload});return {data:{id:'abc'},error:null}}})})})
+  from:table=>({insert:payload=>({select:()=>({single:async()=>{calls.push({kind:'insert',table,payload});return {data:{id:'abc'},error:null}}})}),select:()=>{const q={eq:()=>q,order:()=>q,limit:async()=>({data:[],error:null})};return q}})
  };
  return {calls,client,workflow:createSafeWorkflow(client)};
 }
