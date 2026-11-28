@@ -29,7 +29,8 @@ test('entry inputs are held during mutation and persist only on successful submi
  assert.match(entry,/disabled=\{p\.busy\|\|p\.loading\}/);
  assert.match(entry,/!p\.completed\.includes\(p\.selected\)/);
  assert.match(app,/await bridges\.writer\.submit/);
- assert.match(app,/if\(scopeRef\.current===operationScope\)\{setNote\(''\)/);
+ assert.match(app,/if\(scopeRef\.current===operationScope\)\{\s*setUncertainSubmit\(null\);setNote\(''\)/);
+ assert.match(entry,/p\.uncertainStudentId!==p\.selected/);
 });
 test('review is restricted to actionable records and requires a note for rejection',()=>{
  assert.match(review,/i\.status==='待审核'/);
