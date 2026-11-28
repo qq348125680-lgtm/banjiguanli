@@ -10,6 +10,7 @@ on:
       - 'sql/alpha45_STAGING_ONLY_ROLLBACK.sql'
       - 'sql/alpha45_PREFLIGHT_READONLY.sql'
       - 'tests/postgres/**'
+      - 'src/lib/safe-workflow.mjs'
 permissions:
   contents: read
 jobs:
@@ -59,7 +60,9 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f sql/alpha45_STAGING_ONLY_ROLLBACK.sql
       - name: Verify no data loss and no new object remains
         run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/rollback-assert.sql
+      - name: Backup and restore a deliberately damaged synthetic database
+        run: bash tests/postgres/backup-restore.sh
       - name: Explain environment scope
         run: |
-          echo "PASS: ephemeral local PostgreSQL 17 completed RLS, RPC, concurrency and rollback checks."
+          echo "PASS: ephemeral local PostgreSQL 17 completed RLS, RPC, concurrency, rollback and backup restore checks."
           echo "No Supabase project credentials, connections, production data or personal student records used."
