@@ -10,6 +10,7 @@ import {StudentDossierPanel} from './components/StudentDossierPanel';
 import {AuditPanel} from './components/AuditPanel';
 import {ReportsPanel} from './components/ReportsPanel';
 import {ClassRecordsPanel} from './components/ClassRecordsPanel';
+import {ClassOrganizationPanel} from './components/ClassOrganizationPanel';
 import {AttendanceEntryPanel} from './components/AttendanceEntryPanel';
 import {ReviewPanel} from './components/ReviewPanel';
 import {markSubmissionConfirmed,nextOutstanding} from './lib/entry-progress.mjs';
@@ -44,12 +45,13 @@ export default function App(){
  const scopeRef=useRef('');scopeRef.current=`${user?.id??''}:${classId}:${day}`;
  const [reviewNotes,setReviewNotes]=useState<Record<string,string>>({}),[busyId,setBusyId]=useState('');
  const [dossierId,setDossierId]=useState('');
+ const [studentTab,setStudentTab]=useState<'roster'|'organization'>('roster');
  const [authorizationChecking,setAuthorizationChecking]=useState(false);
  const [authorizationBlocked,setAuthorizationBlocked]=useState(false);
  const authorizedClassIds=useMemo(()=>[...classes.map(c=>c.id),...delegated.map(d=>d.class_id)],[classes,delegated]);
  const isAuthorizedClass=Boolean(classId)&&authorizedClassIds.includes(classId);
  const owned=classes.some(c=>c.id===classId);
- useEffect(()=>{setDossierId('');setReviewNotes({});setBusyId('');setFeedback('')},[classId,user?.id]);
+ useEffect(()=>{setDossierId('');setStudentTab('roster');setReviewNotes({});setBusyId('');setFeedback('')},[classId,user?.id]);
  const fetchDossierPage=useCallback(async(section:'考勤'|'请假'|'违纪'|'积分'|'值日',targetPage:number,targetPageSize:number):Promise<DossierPage>=>{
   if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking||!dossierId)throw new Error('当前无权读取档案');
   return bridges.reader.dossierPageForOwner(classId,dossierId,section,{page:targetPage,pageSize:targetPageSize});
@@ -57,6 +59,10 @@ export default function App(){
  const fetchClassRecords=useCallback(async(kind:string,targetPage:number,targetPageSize:number)=>{
   if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking)throw Error('当前无权读取班级业务记录');
   return bridges.reader.classRecordsForOwner(classId,kind,{page:targetPage,pageSize:targetPageSize});
+ },[bridges,user,classId,owned,isAuthorizedClass,authorizationBlocked,authorizationChecking]);
+ const fetchClassOrganization=useCallback(async()=>{
+  if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking)throw Error('当前无权查看班级组织信息');
+  return bridges.reader.classOrganizationForOwner(classId);
  },[bridges,user,classId,owned,isAuthorizedClass,authorizationBlocked,authorizationChecking]);
  const canWrite=writesEnabled&&Boolean(bridges)&&Boolean(user)&&isAuthorizedClass&&!loading&&!authorizationChecking&&!authorizationBlocked;
  const canSubmit=canWrite&&canSubmitAsDelegate({owned,delegated,classId,writesEnabled});
@@ -205,7 +211,11 @@ export default function App(){
  {problem&&<Message kind="error" message={problem}/>}{feedback&&<Message kind="success" message={feedback}/>}{loading&&<div className="muted loading" role="status">正在读取数据…</div>}
  {!classId?<div className="panel"><h2>暂无可访问班级</h2><p className="muted">请确认班主任所有权或班干部授权状态；不要通过浏览器密钥绕过。</p><Button onClick={()=>void verifiedRefresh()} secondary>重新验证班级授权</Button></div>:<>
  {view==='dashboard'&&<><div className="stats"><div className="metric"><span>学生</span><b>{!rosterLoaded?'—':students.length}</b><small>当前授权班级 · 无法读取不显示为零</small></div><div className="metric"><span>待审核</span><b>{owned?pendingLabel(pendingCount):'—'}</b><small>全班精确计数；失败显示—</small></div><div className="metric"><span>账号身份</span><b className="metric-word">{owned?'班主任':'班干部'}</b><small>来自现有权限</small></div></div><section className="panel"><h2>常用操作</h2><div className="quick-grid"><Button onClick={()=>selectView('students')} secondary>学生查询</Button><Button onClick={()=>selectView('entry')} secondary>考勤提交</Button><Button onClick={()=>selectView('review')} secondary>审核记录</Button></div></section></>}
- {view==='students'&&<><StudentsPanel students={students} search={search} onSearch={setSearch} loading={loading} onSelect={owned?setDossierId:undefined} selectedId={dossierId}/>{owned&&dossierId&&<StudentDossierPanel student={students.find(st=>st.id===dossierId)} fetchPage={fetchDossierPage} onClose={()=>setDossierId('')}/>}</>}
+ {view==='students'&&<>
+   {owned&&<div className="student-center-tabs" role="group" aria-label="学生中心子模块"><button type="button" aria-pressed={studentTab==='roster'} className={studentTab==='roster'?'active':''} onClick={()=>setStudentTab('roster')}>花名册与档案</button><button type="button" aria-pressed={studentTab==='organization'} className={studentTab==='organization'?'active':''} onClick={()=>setStudentTab('organization')}>座位 · 宿舍 · 班干部</button></div>}
+   {(!owned||studentTab==='roster')&&<><StudentsPanel students={students} search={search} onSearch={setSearch} loading={loading} onSelect={owned?setDossierId:undefined} selectedId={dossierId}/>{owned&&dossierId&&<StudentDossierPanel student={students.find(st=>st.id===dossierId)} fetchPage={fetchDossierPage} onClose={()=>setDossierId('')}/>}</>}
+   {owned&&studentTab==='organization'&&<ClassOrganizationPanel key={`${user.id}:${classId}`} load={fetchClassOrganization}/>}
+  </>}
  {view==='entry'&&<AttendanceEntryPanel roster={roster} completed={submittedSession} selected={selected} setSelected={setSelected} loading={loading} busy={Boolean(busyId)} day={day} setDay={setDay} attendance={attendance} setAttendance={setAttendance} note={note} setNote={setNote} classId={classId} owned={owned} canSubmit={canSubmit} submit={()=>void submit()}/> }
  {view==='review'&&<ReviewPanel owned={owned} items={items} names={names} total={total} page={page} pageSize={pageSize} filter={filter} loading={loading} busy={Boolean(busyId)} canWrite={canWrite} notes={reviewNotes} setNotes={setReviewNotes} setFilter={setFilter} setPage={setPage} setPageSize={setPageSize} review={(id,action)=>void review(id,action)}/> }
  {view==='records'&&(owned?<ClassRecordsPanel key={`${user.id}:${classId}`} load={fetchClassRecords}/>:<section className="panel placeholder"><h2>班务记录</h2><p>本入口仅班主任可以查看；班干部请使用授权的考勤提交和我的审核记录。</p></section>)}
