@@ -29,6 +29,13 @@ test('unknown outcome is never automatically cleared; settled outcome clears mat
  assert.equal(finishKnownWrite(s,'review',scope,reviewId),true);
  assert.equal(loadPendingMarker(s,'review',scope),null);
 });
+test('definitive server reconciliation can clear a stale but intact marker',()=>{
+ const s=storage(),key=pendingMarkerKey('submit',scope);
+ s.setItem(key,JSON.stringify({id:studentId,savedAt:1}));
+ assert.equal(finishKnownWrite(s,'submit',scope,otherStudent),false);
+ assert.equal(finishKnownWrite(s,'submit',scope,studentId),true);
+ assert.equal(s.getItem(key),null);
+});
 test('unavailable or denied session storage blocks writes',()=>{
  assert.equal(beginWriteIntent(null,'submit',scope,studentId).reason,'storage');
  const blocked={getItem:()=>null,setItem:()=>{throw Error('storage disabled')},removeItem:()=>{}};
