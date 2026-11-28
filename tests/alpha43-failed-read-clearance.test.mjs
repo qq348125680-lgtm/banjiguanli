@@ -30,3 +30,10 @@ test('Alpha43 App clears all sensitive material on scope failure before displayi
  assert.match(app,/if\(recovery\.clearAudit\)\{setAudits\(\[\]\);setAuditTotal\(null\)\}/);
  assert.doesNotMatch(app,/同查询条件刷新时保留上次成功记录/);
 });
+
+test('Alpha43 both authorization refresh paths and global data load have bounded deadlines',()=>{
+ const app=readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');
+ assert.equal(app.split('await withReadDeadline(()=>bridges.reader.authorizedClasses())').length-1,2);
+ assert.match(app,/await withReadDeadline\(\(\)=>loadScopedPanels\(/);
+ assert.match(app,/setAuthorizationBlocked\(true\)/);
+});
