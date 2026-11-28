@@ -28,7 +28,7 @@ test('filtering unfinished students does not alter underlying roster',async()=>{
 test('entry inputs are held during mutation and persist only on successful submission',()=>{
  assert.match(entry,/disabled=\{p\.busy\|\|p\.loading\}/);
  assert.match(entry,/!p\.completed\.includes\(p\.selected\)/);
- assert.match(app,/await bridges\.writer\.submit/);
+ assert.match(app,/await withUncertainWriteDeadline\(\(\)=>bridges\.writer\.submit/);
  assert.match(app,/if\(scopeRef\.current===operationScope\)\{\s*setUncertainSubmit\(null\);setNote\(''\)/);
  assert.match(entry,/p\.uncertainStudentId!==p\.selected/);
 });
