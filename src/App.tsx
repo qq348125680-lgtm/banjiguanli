@@ -250,7 +250,7 @@ export default function App(){
   const intentScope={accountId:submittedAccount,classId:submittedClass,day:submittedDay};
   const intent=beginWriteIntent(browserSessionStorage(),'submit',intentScope,submittedStudent);
   if(!intent.ok){
-   setProblem(intent.reason==='storage'?'当前浏览器不能安全保存未确认操作标记，已阻止本次提交；请检查隐私模式或浏览器存储设置。':'本班本日还有尚未确认的提交，请先核对服务器结果。');
+   setProblem(intent.reason==='storage'?'当前浏览器不能安全保存未确认操作标记，已阻止本次提交；请检查隐私模式或浏览器存储设置。':intent.reason==='invalid'?'发现损坏或过期的未确认考勤标记。为避免重复写入，已保留该标记并停止本次提交；请先在旧版核对记录。':'本班本日还有尚未确认的提交，请先核对服务器结果。');
    return;
   }
   operationLock.current=true;
@@ -305,7 +305,7 @@ export default function App(){
   const intentScope={accountId:account,classId:submittedClass};
   const intent=beginWriteIntent(browserSessionStorage(),'review',intentScope,id);
   if(!intent.ok){
-   setProblem(intent.reason==='storage'?'当前浏览器不能安全保存未确认审核标记，已阻止本次审核；请检查浏览器存储设置。':'本班有上一笔审核结果尚未确认，请先核对服务器状态。');
+   setProblem(intent.reason==='storage'?'当前浏览器不能安全保存未确认审核标记，已阻止本次审核；请检查浏览器存储设置。':intent.reason==='invalid'?'发现损坏或过期的未确认审核标记。已保留标记并暂停本班审核；请先在旧版核对原申请状态。':'本班有上一笔审核结果尚未确认，请先核对服务器状态。');
    return;
   }
   operationLock.current=true;
