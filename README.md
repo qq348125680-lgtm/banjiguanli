@@ -140,3 +140,9 @@ npm run dev
 ## 正式版验收加固：直接 RLS 越权检查
 
 新增七条对独立测试 Supabase 中的学生、干部、申请表的直接读取权限测试，并要求存在真实的**虚构外部干部申请样本**。此前仅检查授权后的花名册 RPC，可能遗漏“RPC 安全但普通表查询被误开放”的情况。现在不允许用空表或网络错误冒充 RLS 隔离成功。详见 [三账号验收指南](STAGING_READONLY_ACCEPTANCE.md)。这仍是独立测试工具，未连接正式库、未完成真实三账号验收。
+
+## V7 正式版 · 高权限函数生产清点
+
+2026-11-28 对现有班级管理 Supabase 执行了**只读系统元数据检查**：`public` 下 35 个 `SECURITY DEFINER` 函数，19 个匿名角色可执行，其中 16 个为触发器函数、3 个为普通可调用函数。此数字不是漏洞数量，匿名权限与业务实际越权尚须验证；现有正式库的任何函数、RLS 和授权均未修改。
+
+其中 `my_class_message_contacts_v470`、`v470_is_class_message_member`、`v503_my_linked_message_statuses` 进入重点代码审查清单。详见 [高权限函数只读清点及复核原则](V7_PRODUCTION_FUNCTION_SECURITY_READONLY_2026-11-28.md)。`security_review` 继续保持上线阻断，直到隔离账号实际验证通过。
