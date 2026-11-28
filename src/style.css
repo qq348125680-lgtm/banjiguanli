@@ -12,3 +12,27 @@
 
 /* Alpha16: accessible per-category dossier paging; independent of the server 20-row cap. */
 .dossier-toolbar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:10px 0}.dossier-toolbar label{display:flex;gap:7px;align-items:center;color:#6b7894;font-size:12px}.dossier-toolbar select{min-height:36px;padding:6px 10px}.dossier-pager{display:flex;gap:12px;justify-content:flex-end;align-items:center;margin-top:13px;color:#75829a;font-size:12px}.dossier-pager button{min-height:40px;padding:8px 11px;background:#fff;color:#5263ac;border:1px solid #dce5f6;border-radius:9px}.dossier-pager button:disabled{opacity:.45}@media(max-width:700px){.dossier-toolbar{align-items:flex-start}.dossier-pager{justify-content:space-between}}
+
+/* Alpha39: roster pagination, searchable attendance, audit timeline; desktop grid unchanged. */
+.roster-controls{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.roster-controls .search{flex:1 1 260px;max-width:430px;margin:16px 0}
+.roster-page-size{display:flex;align-items:center;gap:8px;color:#65738b;font-size:12px;white-space:nowrap}
+.roster-page-size select{padding:8px 10px;min-height:42px}
+.roster-pagination{display:flex;align-items:center;justify-content:center;gap:15px;margin-top:18px;color:#65738b;font-size:12px}
+.roster-pagination button{min-height:44px;border:1px solid #dfe5ee;border-radius:10px;color:#5165ac;background:#f7f9ff;padding:8px 13px}
+.entry-search-label{display:flex;align-items:center;gap:10px;margin:10px 0 12px;font-size:12px;font-weight:600;color:#65738b}
+.entry-search-label input{flex:1;max-width:340px;min-width:0}
+.audit-item .item-top{flex-wrap:wrap}
+.audit-item .muted{overflow-wrap:anywhere}
+.audit-actor{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}
+@media(max-width:700px){
+ .roster-controls{align-items:stretch;gap:8px}
+ .roster-controls .search{flex:1 1 100%;max-width:none;margin:11px 0 0}
+ .roster-page-size{margin-left:auto}
+ .roster-pagination{justify-content:space-between;gap:8px}
+ .roster-pagination button{flex:0 0 auto;min-width:79px}
+ .entry-search-label{align-items:stretch;flex-direction:column}
+ .entry-search-label input{max-width:none;width:100%}
+ .audit-item .item-top{align-items:flex-start}
+ .pagination{gap:8px;flex-wrap:wrap}
+}
