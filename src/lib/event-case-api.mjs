@@ -4,12 +4,14 @@ import {inboxDefinitions,assertInboxQueryResult,buildInboxSummary} from './event
 export const CASE_KINDS=Object.freeze(['考勤','请假','违纪','积分','值日','家校沟通','其他']);
 export const CASE_STATES=Object.freeze(['待分派','处理中','待复核','已结案']);
 function validPage(page,size){if(!Number.isSafeInteger(page)||page<1||page>10000||![5,10,20].includes(size))throw Error('工单分页参数无效')}
-export function validateCaseInput({classId,studentId,kind,title,description='',requestKey}){
+export function validateCaseInput({classId,studentId,kind,title,description='',requestKey,sourceRecordId=''}){
  assertUuid(classId);assertUuid(studentId);assertUuid(requestKey);
  if(!CASE_KINDS.includes(kind))throw Error('不支持的事件类型');
  if(typeof title!=='string'||title.trim().length<2||title.trim().length>80)throw Error('事件标题须为2至80字');
  if(typeof description!=='string'||description.length>1000)throw Error('事件说明不能超过1000字');
- return {p_class_id:classId,p_student_id:studentId,p_kind:kind,p_title:title.trim(),p_description:description.trim(),p_request_key:requestKey};
+ if(sourceRecordId){assertUuid(sourceRecordId);if(kind==='其他')throw Error('其他类别不能自动关联已有业务记录')}
+ return {p_class_id:classId,p_student_id:studentId,p_kind:kind,p_title:title.trim(),p_description:description.trim(),p_request_key:requestKey,
+  ...(sourceRecordId?{p_source_record_id:sourceRecordId}:{})};
 }
 export function validateCaseTransition(id,action,assignee,note=''){
  assertUuid(id);
@@ -65,6 +67,27 @@ export function createEventCaseApi(client){
   }));
   return {...buildInboxSummary(groups),owned};
  }
+ /** Teacher-only original source lookups; the mapping table denies干部
+  * access, including source IDs relating to family contact notes.
+  */
+ async function sourceLinks(classId,sources){
+  await user();assertUuid(classId);
+  if(!Array.isArray(sources)||sources.length>120)throw Error('原记录关联查询超出上限');
+  const keys=[...new Set(sources.filter(x=>x?.sourceId).map(x=>x.sourceId))];
+  for(const id of keys)assertUuid(id);
+  if(!keys.length)return [];
+  const {data,error}=await client.from('v7_event_case_sources')
+   .select('case_id,class_id,student_id,source_kind,source_record_id')
+   .eq('class_id',classId).in('source_record_id',keys).limit(120);
+  if(error)throw error;
+  if(!Array.isArray(data))throw Error('原始事件关联数据格式不正确');
+  const expected=new Set(sources.map(x=>x.kind+':'+x.sourceId+':'+x.studentId));
+  for(const row of data){
+   if(row.class_id!==classId||!expected.has(row.source_kind+':'+row.source_record_id+':'+row.student_id))
+    throw Error('检测到与当前事件范围不匹配的关联记录，已停止展示');
+  }
+  return data;
+ }
  async function history(classId,caseId){
   await user();assertUuid(classId);assertUuid(caseId);
   const {data,error}=await client.from('v7_event_case_history')
@@ -90,7 +113,10 @@ export function createEventCaseApi(client){
  }
  async function create(input){
   await user();
-  const {data,error}=await client.rpc('v7_create_event_case',validateCaseInput(input));
+  const params=validateCaseInput(input);
+  const hasSource=Boolean(params.p_source_record_id);
+  // Linked creation is owner-verified and atomic with its source pointer.
+  const {data,error}=await client.rpc(hasSource?'v7_create_linked_event_case':'v7_create_event_case',params);
   if(error)throw error;if(typeof data!=='string')throw Error('创建工单未返回有效编号');
   assertUuid(data);return data;
  }
@@ -100,5 +126,5 @@ export function createEventCaseApi(client){
   if(error)throw error;if(!data||data.id!==caseId||!CASE_STATES.includes(data.status))throw Error('工单变更结果未能核实');
   return data;
  }
- return Object.freeze({list,taskInbox,history,assignees,findByRequestKey,create,transition});
+ return Object.freeze({list,taskInbox,sourceLinks,history,assignees,findByRequestKey,create,transition});
 }
