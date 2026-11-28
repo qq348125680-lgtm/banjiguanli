@@ -118,3 +118,14 @@ assert.match(stage,/assertOwnedSubmissionRows\(cadreDirect,ids\[1\],config\.clas
 assert.match(stagedAccess,/result\.data\.length!==0/);
 assert.match(stagedAccess,/String\(result\.error\.code\)==='42501'/);
 console.log('Staging direct RLS positive/negative controls: 7 source assertions PASS');
+
+// Security inventory must remain read-only; it is never a production migration.
+const functionAuditSql=fs.readFileSync(new URL('../sql/v7_SECURITY_DEFINER_INVENTORY_READONLY.sql',import.meta.url),'utf8');
+const functionAuditBody=functionAuditSql.split('\n').map(line=>line.replace(/--.*$/,'')).join('\n');
+assert.match(functionAuditBody,/from pg_proc p/);
+assert.match(functionAuditBody,/has_function_privilege\('anon'/);
+assert.match(functionAuditBody,/p\.prorettype='pg_catalog\.trigger'::regtype/);
+assert.doesNotMatch(functionAuditBody,/\b(create|alter|drop|grant|revoke|insert|update|delete|truncate)\b\s+(table|function|on|into|from|policy|schema|index|trigger)/i);
+const releaseGates=JSON.parse(fs.readFileSync(new URL('../release-readiness.json',import.meta.url),'utf8'));
+assert.equal(releaseGates.requirements.find(row=>row.id==='security_review').status,'blocked');
+console.log('Production function inventory read-only and release block: 5 assertions PASS');
