@@ -224,3 +224,23 @@
 .sidebar nav{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#d8dff0 transparent}
 .sidebar .brand,.sidebar .section-label,.sidebar .side-foot{flex-shrink:0}
 @media(max-height:520px){.sidebar .brand{padding-bottom:8px}.sidebar .section-label{padding-top:6px}.sidebar .sidebar-hint{display:none}}
+
+/* Alpha47: compact pending-recovery inbox; does not add a second navigation tier. */
+.recovery-inbox{background:#fff;border:1px solid #e6eaf3;border-radius:13px;padding:13px 16px;margin-bottom:16px;color:#415477}
+.recovery-summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.recovery-summary strong{font-size:13px}
+.recovery-summary span{font-size:12px;color:#7b899e}
+.recovery-inbox details{margin-top:10px}
+.recovery-inbox summary{font-size:12px;font-weight:650;color:#5265a3;cursor:pointer}
+.recovery-rows{display:grid;gap:8px;margin-top:10px}
+.recovery-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;background:#f8faff;border:1px solid #e9edf7;border-radius:9px}
+.recovery-row>div{display:flex;flex-direction:column;min-width:0;gap:3px}
+.recovery-row strong{font-size:12px;overflow-wrap:anywhere}
+.recovery-row span{font-size:11px;color:#7a879d}
+.recovery-row .button{flex-shrink:0;min-height:40px;padding:8px 12px;font-size:12px}
+.recovery-warning{font-size:12px!important;color:#965a2f!important;line-height:1.5}
+@media(max-width:700px){
+ .recovery-inbox{padding:12px}
+ .recovery-row{align-items:stretch;flex-direction:column}
+ .recovery-row .button{width:100%;min-height:44px}
+}
