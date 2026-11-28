@@ -323,3 +323,14 @@
  .event-flow-step span{font-size:11px}
  .event-demo-action button{flex:1;min-height:44px}
 }
+
+/* Contextual student -> events -> relations drilldown, without extra navigation levels. */
+.event-linked-scope{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#edf2fe;border:1px solid #dce6fb;border-radius:10px;padding:11px 13px;margin:12px 0;color:#4d6597;font-size:12px}
+.event-linked-scope button{min-height:40px}
+.relation-row-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+@media(max-width:700px){
+ .event-linked-scope{align-items:stretch;flex-direction:column}
+ .event-linked-scope button{width:100%;min-height:44px}
+ .relation-row-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+ .relation-row-actions button{min-height:44px}
+}
