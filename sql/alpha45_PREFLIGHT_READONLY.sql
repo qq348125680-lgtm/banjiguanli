@@ -1,7 +1,7 @@
 -- V7 Alpha45 schema preflight; READ-ONLY, no personal records, no mutations.
 -- Run against a STAGING snapshot. Live project may be examined read-only for
 -- a comparison of names/constraints, but NEVER execute the staging migration live.
--- Every check MUST be true except the last two, which should be false before install.
+-- All eight schema/policy checks should be true. The three installed flags below\n-- should be false before migration and true after successful staging installation.
 select
  'attendance_unique_student_day' as check_name,
  exists(
