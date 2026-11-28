@@ -136,3 +136,7 @@ npm run dev
 新增 `npm run staging:readonly` 和手动 GitHub Actions 工作流 `.github/workflows/staging-readonly-acceptance.yml`。用三名**虚构测试账号**检查班主任授权、班干部授权、无关账号、匿名账号及跨班 RPC 拒绝，并验证有限字段花名册。项目 URL 必须与显式提供的独立测试 ref 一致，**现有班级管理生产项目直接拒绝连接**。只进行登录、查询和登出，不执行任何考勤、积分或审批写入。
 
 完整操作条件、测试账号和 GitHub Environment secrets 清单见 [独立 Supabase 三账号只读验收](STAGING_READONLY_ACCEPTANCE.md)。**此工作流尚未在独立 Supabase 项目执行；不能标记真实权限验收通过。**
+
+## 正式版验收加固：直接 RLS 越权检查
+
+新增七条对独立测试 Supabase 中的学生、干部、申请表的直接读取权限测试，并要求存在真实的**虚构外部干部申请样本**。此前仅检查授权后的花名册 RPC，可能遗漏“RPC 安全但普通表查询被误开放”的情况。现在不允许用空表或网络错误冒充 RLS 隔离成功。详见 [三账号验收指南](STAGING_READONLY_ACCEPTANCE.md)。这仍是独立测试工具，未连接正式库、未完成真实三账号验收。
