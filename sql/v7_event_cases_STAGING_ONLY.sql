@@ -140,6 +140,29 @@ begin
  return jsonb_build_object('id',p_case_id,'status',v_next,'action',v_name);
 end;
 $fn$;
+-- Owner can list only current-class valid assignees, regardless of legacy
+-- class_delegates SELECT RLS policy. Does not return emails or phone numbers.
+create or replace function public.v7_event_case_assignees(p_class_id uuid)
+returns table(user_id uuid, student_id uuid, duty text, enabled boolean)
+language plpgsql stable security definer set search_path=''
+as $fn$
+declare v_actor uuid := (select auth.uid());
+begin
+ if v_actor is null or p_class_id is null or not exists (
+  select 1 from public.classes c where c.id=p_class_id and c.owner_id=v_actor
+ ) then raise exception '仅当前班主任可查看负责人' using errcode='42501';end if;
+ return query
+  select v_actor,null::uuid,'班主任（本人）'::text,true
+  union all
+  select d.user_id,d.student_id,d.duty,d.enabled
+  from public.class_delegates d
+  where d.class_id=p_class_id and d.enabled is true and d.user_id<>v_actor
+  order by 3 limit 100;
+end;
+$fn$;
+revoke all on function public.v7_event_case_assignees(uuid) from public,anon,authenticated;
+grant execute on function public.v7_event_case_assignees(uuid) to authenticated;
+
 revoke all on function public.v7_create_event_case(uuid,uuid,text,text,text,uuid) from public,anon,authenticated;
 revoke all on function public.v7_transition_event_case(uuid,text,uuid,text) from public,anon,authenticated;
 grant execute on function public.v7_create_event_case(uuid,uuid,text,text,text,uuid) to authenticated;
