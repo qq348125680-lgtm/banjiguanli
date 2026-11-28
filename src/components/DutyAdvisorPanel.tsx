@@ -2,20 +2,20 @@ import {useEffect,useState} from 'react';
 import type {StudentItem} from '../lib/bridge';
 import {dutyWorkload,proposeDutySubstitute} from '../lib/duty-planner.mjs';
 
-type DutyRecord={id?:string;student_id:string;duty_date:string;area?:string;status?:string};
-export function DutyAdvisorPanel({records,students}:{records:DutyRecord[];students:StudentItem[]}){
+export function DutyAdvisorPanel({records,students}:{records:Record<string,unknown>[];students:StudentItem[]}){
+ const duties=records.map(r=>({student_id:String(r.student_id??''),duty_date:String(r.duty_date??''),area:String(r.area??''),status:String(r.status??'')}));
  const [absentId,setAbsentId]=useState(''),[date,setDate]=useState(''),[unavailableIds,setUnavailableIds]=useState<string[]>([]);
  const [result,setResult]=useState<ReturnType<typeof proposeDutySubstitute>|null>(null);
  const [error,setError]=useState('');
  useEffect(()=>{setResult(null);setError('')},[records,students,date,absentId,unavailableIds]);
  const named=new Map(students.map(s=>[s.id,s.name]));
- const dates=[...new Set(records.map(row=>row.duty_date).filter(Boolean))].sort().reverse();
- const assigned=records.filter(row=>row.duty_date===date);
+ const dates=[...new Set(duties.map(row=>row.duty_date).filter(Boolean))].sort().reverse();
+ const assigned=duties.filter(row=>row.duty_date===date);
  const absentOptions=[...new Set(assigned.map(row=>row.student_id))].filter(id=>named.has(id));
- const workload=dutyWorkload(students,records);
+ const workload=dutyWorkload(students,duties);
  function propose(){
   setError('');setResult(null);
-  try{setResult(proposeDutySubstitute({people:students,records,dutyDate:date,absentStudentId:absentId,excludedIds:unavailableIds}))}
+  try{setResult(proposeDutySubstitute({people:students,records:duties,dutyDate:date,absentStudentId:absentId,excludedIds:unavailableIds}))}
   catch(e){setError(e instanceof Error?e.message:'无法生成替补建议')}
  }
  return <div className="duty-advisor" aria-label="值日临时替补建议">
