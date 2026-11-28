@@ -16,8 +16,8 @@ jobs:
     timeout-minutes: 20
     env:
       VITE_ENABLE_WORKFLOW_WRITES: 'false'
-      VITE_SUPABASE_URL: 'https://YOUR_PROJECT.supabase.co'
-      VITE_SUPABASE_PUBLISHABLE_KEY: 'YOUR_PUBLIC_PUBLISHABLE_KEY'
+      VITE_SUPABASE_URL: ''
+      VITE_SUPABASE_PUBLISHABLE_KEY: ''
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
