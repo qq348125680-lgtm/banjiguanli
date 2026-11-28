@@ -7,8 +7,8 @@ type EventItem={
  date:string;summary:string;stateLabel:string;needsFollowUp:boolean;nextAction:string;source:string;
 };
 type Feed={events:EventItem[];failedKinds:string[];limited:boolean};
-type Props={load:()=>Promise<Feed>;owned:boolean;onStudent:(id:string)=>void;onRecord:(kind:string)=>void;onRelations?:(id:string)=>void;focusStudentId?:string;onClearFocus?:()=>void};
-export function EventCenterPanel({load,owned,onStudent,onRecord,onRelations,focusStudentId='',onClearFocus}:Props){
+type Props={load:()=>Promise<Feed>;owned:boolean;onStudent:(id:string)=>void;onRecord:(kind:string)=>void;onCreateCase?:(studentId:string,kind:string,summary:string)=>void;onRelations?:(id:string)=>void;focusStudentId?:string;onClearFocus?:()=>void};
+export function EventCenterPanel({load,owned,onStudent,onRecord,onCreateCase,onRelations,focusStudentId='',onClearFocus}:Props){
  const [feed,setFeed]=useState<Feed|null>(null);
  const [kind,setKind]=useState('全部'),[scope,setScope]=useState('全部'),[search,setSearch]=useState('');
  const [page,setPage]=useState(1),[revision,setRevision]=useState(0);
@@ -56,6 +56,7 @@ export function EventCenterPanel({load,owned,onStudent,onRecord,onRelations,focu
     <p>{item.summary}</p>
     <div className="event-row-next"><span>建议下一步：{item.nextAction}</span>
      <div>{owned&&<button type="button" className="record-refresh" onClick={()=>onStudent(item.studentId)}>学生档案</button>}
+      {owned&&onCreateCase&&<button type="button" className="record-refresh" onClick={()=>onCreateCase(item.studentId,item.kind,item.summary)}>发起跟进工单</button>}
       {owned&&onRelations&&<button type="button" className="record-refresh" onClick={()=>onRelations(item.studentId)}>关联用户</button>}
       {owned&&<button type="button" className="record-refresh" onClick={()=>onRecord(item.kind)}>查看原始记录</button>}
      </div>
