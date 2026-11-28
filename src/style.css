@@ -78,3 +78,22 @@
  .record-item-head{align-items:flex-start;flex-direction:column;gap:3px}
  .record-pagination{justify-content:space-between;gap:9px}
 }
+
+/* Alpha40: student center nested submodules, touch-friendly and desktop compatible. */
+.student-center-tabs{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px}
+.student-center-tabs button{min-height:44px;padding:11px 17px;border-radius:12px;border:1px solid #e2e7f0;color:#596b8d;background:#fff;font-size:13px;font-weight:600}
+.student-center-tabs button.active{background:#edf0ff;border-color:#b9c4e8;color:#455ba5}
+.organization-panel .panel-head{margin-bottom:15px}
+.org-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;margin:16px 0}
+.org-item{display:flex;flex-direction:column;gap:6px;border:1px solid #e8edf5;border-radius:12px;padding:14px;min-width:0}
+.org-item strong{font-size:12px;color:#7a88a2}
+.org-item span{font-size:15px;font-weight:700;color:#35476b}
+.org-item small{font-size:11px;color:#8794a7;overflow-wrap:anywhere}
+.org-room-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:16px 0}
+.org-room{border:1px solid #e9edf5;border-radius:13px;padding:17px;min-width:0}
+.org-room h3{margin:0 0 10px;font-size:15px}
+.org-room p{display:flex;justify-content:space-between;gap:13px;margin:0;padding:10px 0;border-top:1px solid #f0f2f6}
+.org-room p strong{font-size:12px;color:#75829a}
+.org-room p span{font-size:13px;color:#35456c;overflow-wrap:anywhere}
+@media(max-width:900px){.org-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.student-center-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px}.student-center-tabs button{padding:9px 7px;font-size:12px}.org-grid,.org-room-grid{grid-template-columns:1fr}.org-room{padding:13px}.org-room p{gap:8px}}
