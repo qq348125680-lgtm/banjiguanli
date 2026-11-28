@@ -123,3 +123,16 @@ npm run dev
 在 `release-readiness.json` 中逐项登记“有运行证据 / 阻断 / 尚未实测”。运行 `npm run release:status` 可查看可核实项目与阻断原因；`npm run release:gate` 是**默认禁止正式发布**的严格门槛：任一必需项未完成即返回非零状态。CI 会打印发布状态，但不自动启用生产数据库或将技术预览当成正式版。
 
 已具备的证据仅包括最新 Node/React 构建、无数据 Pages 预览和独立 PostgreSQL 合约。仍缺独立 Supabase 测试、真实班主任与班干部账号权限、浏览器全链路写入/审核、安全函数评审、恢复演练及正式部署。**只有真正验收后才能开放正式版，不预先承诺日期。**
+
+## Alpha 47 · 已确认写入与页面刷新结果隔离
+
+- 修复“服务器已提交/审核成功，但后续页面刷新报错时，外层错误处理可能错误重置为未知写入”的路径。
+- `src/lib/confirmed-write-refresh.mjs` 为已确认提交后的刷新提供独立错误分类，`loadData` 现返回明确的成功/失败结果。
+- 考勤提交、班主任审核、二者的服务器状态核对（共四处）均使用独立刷新判断；失败只提示页面数据不新，不允许误认为提交失败或自动补发。
+- `tests/confirmed-write-refresh.test.mjs` 增加独立测试；完整构建以最新 Actions 运行记录为准。
+
+## Alpha 47 · 独立 Supabase Auth/RLS 三账号只读验收工具
+
+新增 `npm run staging:readonly` 和手动 GitHub Actions 工作流 `.github/workflows/staging-readonly-acceptance.yml`。用三名**虚构测试账号**检查班主任授权、班干部授权、无关账号、匿名账号及跨班 RPC 拒绝，并验证有限字段花名册。项目 URL 必须与显式提供的独立测试 ref 一致，**现有班级管理生产项目直接拒绝连接**。只进行登录、查询和登出，不执行任何考勤、积分或审批写入。
+
+完整操作条件、测试账号和 GitHub Environment secrets 清单见 [独立 Supabase 三账号只读验收](STAGING_READONLY_ACCEPTANCE.md)。**此工作流尚未在独立 Supabase 项目执行；不能标记真实权限验收通过。**
