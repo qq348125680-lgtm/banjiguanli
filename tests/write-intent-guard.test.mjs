@@ -36,6 +36,25 @@ test('unavailable or denied session storage blocks writes',()=>{
  const silent={getItem:()=>null,setItem:()=>{},removeItem:()=>{}};
  assert.equal(beginWriteIntent(silent,'submit',scope,studentId).reason,'storage');
 });
+test('malformed and expired markers are never silently overwritten or deleted',()=>{
+ const s=storage();const key=pendingMarkerKey('submit',scope);
+ s.setItem(key,'{not valid json');
+ assert.equal(loadPendingMarker(s,'submit',scope),null);
+ assert.equal(s.getItem(key),'{not valid json');
+ assert.equal(beginWriteIntent(s,'submit',scope,otherStudent).reason,'invalid');
+ assert.equal(s.getItem(key),'{not valid json');
+ const expired=JSON.stringify({id:studentId,savedAt:1});
+ s.setItem(key,expired);
+ assert.equal(loadPendingMarker(s,'submit',scope),null);
+ assert.equal(beginWriteIntent(s,'submit',scope,otherStudent).reason,'invalid');
+ assert.equal(s.getItem(key),expired);
+});
+test('read failures on an existing marker fail closed without writing',()=>{
+ let writes=0;
+ const s={getItem:()=>{throw Error('storage read blocked')},setItem:()=>{writes++},removeItem:()=>{}};
+ assert.equal(beginWriteIntent(s,'review',scope,reviewId).reason,'storage');
+ assert.equal(writes,0);
+});
 test('different days and classes remain independently scoped',()=>{
  const s=storage();const tomorrow={...scope,day:'2026-11-29'};
  beginWriteIntent(s,'submit',scope,studentId);
