@@ -10,6 +10,7 @@ import {StudentDossierPanel} from './components/StudentDossierPanel';
 import {AuditPanel} from './components/AuditPanel';
 import {ReportsPanel} from './components/ReportsPanel';
 import {ClassRecordsPanel} from './components/ClassRecordsPanel';
+import {PointRulesPanel} from './components/PointRulesPanel';
 import {ClassOrganizationPanel} from './components/ClassOrganizationPanel';
 import {AttendanceEntryPanel} from './components/AttendanceEntryPanel';
 import {ReviewPanel} from './components/ReviewPanel';
@@ -46,12 +47,13 @@ export default function App(){
  const [reviewNotes,setReviewNotes]=useState<Record<string,string>>({}),[busyId,setBusyId]=useState('');
  const [dossierId,setDossierId]=useState('');
  const [studentTab,setStudentTab]=useState<'roster'|'organization'>('roster');
+ const [recordTab,setRecordTab]=useState<'activity'|'rules'>('activity');
  const [authorizationChecking,setAuthorizationChecking]=useState(false);
  const [authorizationBlocked,setAuthorizationBlocked]=useState(false);
  const authorizedClassIds=useMemo(()=>[...classes.map(c=>c.id),...delegated.map(d=>d.class_id)],[classes,delegated]);
  const isAuthorizedClass=Boolean(classId)&&authorizedClassIds.includes(classId);
  const owned=classes.some(c=>c.id===classId);
- useEffect(()=>{setDossierId('');setStudentTab('roster');setReviewNotes({});setBusyId('');setFeedback('')},[classId,user?.id]);
+ useEffect(()=>{setDossierId('');setStudentTab('roster');setRecordTab('activity');setReviewNotes({});setBusyId('');setFeedback('')},[classId,user?.id]);
  const fetchDossierPage=useCallback(async(section:'考勤'|'请假'|'违纪'|'积分'|'值日',targetPage:number,targetPageSize:number):Promise<DossierPage>=>{
   if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking||!dossierId)throw new Error('当前无权读取档案');
   return bridges.reader.dossierPageForOwner(classId,dossierId,section,{page:targetPage,pageSize:targetPageSize});
@@ -59,6 +61,10 @@ export default function App(){
  const fetchClassRecords=useCallback(async(kind:string,targetPage:number,targetPageSize:number,filters:{studentId?:string;startOn?:string;endOn?:string})=>{
   if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking)throw Error('当前无权读取班级业务记录');
   return bridges.reader.classRecordsForOwner(classId,kind,{page:targetPage,pageSize:targetPageSize,...filters});
+ },[bridges,user,classId,owned,isAuthorizedClass,authorizationBlocked,authorizationChecking]);
+ const fetchPointRules=useCallback(async()=>{
+  if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking)throw Error('当前无权读取班级积分规则');
+  return bridges.reader.pointRulesForOwner(classId);
  },[bridges,user,classId,owned,isAuthorizedClass,authorizationBlocked,authorizationChecking]);
  const fetchClassOrganization=useCallback(async()=>{
   if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking)throw Error('当前无权查看班级组织信息');
@@ -218,7 +224,11 @@ export default function App(){
   </>}
  {view==='entry'&&<AttendanceEntryPanel roster={roster} completed={submittedSession} selected={selected} setSelected={setSelected} loading={loading} busy={Boolean(busyId)} day={day} setDay={setDay} attendance={attendance} setAttendance={setAttendance} note={note} setNote={setNote} classId={classId} owned={owned} canSubmit={canSubmit} submit={()=>void submit()}/> }
  {view==='review'&&<ReviewPanel owned={owned} items={items} names={names} total={total} page={page} pageSize={pageSize} filter={filter} loading={loading} busy={Boolean(busyId)} canWrite={canWrite} notes={reviewNotes} setNotes={setReviewNotes} setFilter={setFilter} setPage={setPage} setPageSize={setPageSize} review={(id,action)=>void review(id,action)}/> }
- {view==='records'&&(owned?<ClassRecordsPanel key={`${user.id}:${classId}`} load={fetchClassRecords}/>:<section className="panel placeholder"><h2>班务记录</h2><p>本入口仅班主任可以查看；班干部请使用授权的考勤提交和我的审核记录。</p></section>)}
+ {view==='records'&&(owned?<><div className="student-center-tabs" role="group" aria-label="班务记录子模块">
+   <button type="button" className={recordTab==='activity'?'active':''} aria-pressed={recordTab==='activity'} onClick={()=>setRecordTab('activity')}>业务记录</button>
+   <button type="button" className={recordTab==='rules'?'active':''} aria-pressed={recordTab==='rules'} onClick={()=>setRecordTab('rules')}>积分与违纪规则</button></div>
+   {recordTab==='activity'&&<ClassRecordsPanel key={`${user.id}:${classId}`} load={fetchClassRecords}/>}
+   {recordTab==='rules'&&<PointRulesPanel key={`${user.id}:${classId}`} load={fetchPointRules}/>}</>:<section className="panel placeholder"><h2>班务记录</h2><p>本入口仅班主任可以查看；班干部请使用授权的考勤提交和我的审核记录。</p></section>)}
   {view==='archive'&&owned&&<AuditPanel audits={audits} total={auditTotal} page={page} pageSize={pageSize} loading={loading} setPage={setPage} setPageSize={setPageSize}/>}
  {view==='reports'&&<ReportsPanel items={items} rosterCount={students.length} rosterLoaded={rosterLoaded} pendingCount={pendingCount} owned={owned} total={total} loading={loading} onReview={()=>selectView('review')}/>}
   {view==='archive'&&!owned&&<section className="panel placeholder"><div className="placeholder-icon">✧</div><h2>工作档案</h2><p>当前身份无法读取全班操作记录。正式归档功能仍使用旧版系统。</p><Button onClick={()=>selectView('dashboard')} secondary>返回工作台</Button></section>}
