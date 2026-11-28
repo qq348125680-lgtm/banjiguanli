@@ -52,6 +52,7 @@ export default function App(){
  const [dossierId,setDossierId]=useState('');
  const [studentTab,setStudentTab]=useState<'roster'|'organization'>('roster');
  const [recordTab,setRecordTab]=useState<'activity'|'rules'>('activity');
+ const [cadreDirectory,setCadreDirectory]=useState<{uid:string;name:string|null;duty:string;enabled:boolean}[]>([]);
  const [authorizationChecking,setAuthorizationChecking]=useState(false);
  const [authorizationBlocked,setAuthorizationBlocked]=useState(false);
  const authorizedClassIds=useMemo(()=>[...classes.map(c=>c.id),...delegated.map(d=>d.class_id)],[classes,delegated]);
@@ -74,6 +75,17 @@ export default function App(){
   if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking)throw Error('当前无权查看班级组织信息');
   return bridges.reader.classOrganizationForOwner(classId);
  },[bridges,user,classId,owned,isAuthorizedClass,authorizationBlocked,authorizationChecking]);
+ // Resolve delegate UID to name ONLY inside a verified owner class. A lost permission
+ // immediately clears the directory; slow prior requests cannot repopulate it.
+ useEffect(()=>{
+  setCadreDirectory([]);
+  if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking||view!=='review')return;
+  let active=true;
+  withReadDeadline(()=>bridges.reader.cadreDirectoryForOwner(classId))
+   .then(rows=>{if(active)setCadreDirectory(rows)})
+   .catch(()=>{if(active)setCadreDirectory([])});
+  return ()=>{active=false};
+ },[bridges,user?.id,classId,owned,isAuthorizedClass,authorizationBlocked,authorizationChecking,view]);
  const canWrite=writesEnabled&&Boolean(bridges)&&Boolean(user)&&isAuthorizedClass&&!loading&&!authorizationChecking&&!authorizationBlocked;
  const canSubmit=canWrite&&canSubmitAsDelegate({owned,delegated,classId,writesEnabled});
  useEffect(()=>{
@@ -249,7 +261,7 @@ export default function App(){
    {owned&&studentTab==='organization'&&<ClassOrganizationPanel key={`${user.id}:${classId}`} load={fetchClassOrganization}/>}
   </>}
  {view==='entry'&&<AttendanceEntryPanel roster={roster} completed={submittedSession} selected={selected} setSelected={setSelected} loading={loading} busy={Boolean(busyId)} day={day} setDay={setDay} attendance={attendance} setAttendance={setAttendance} note={note} setNote={setNote} classId={classId} owned={owned} canSubmit={canSubmit} submit={()=>void submit()}/> }
- {view==='review'&&<ReviewPanel owned={owned} items={items} names={names} total={total} page={page} pageSize={pageSize} filter={filter} loading={loading} busy={Boolean(busyId)} canWrite={canWrite} notes={reviewNotes} setNotes={setReviewNotes} setFilter={setFilter} setPage={setPage} setPageSize={setPageSize} review={(id,action)=>void review(id,action)}/> }
+ {view==='review'&&<ReviewPanel owned={owned} items={items} names={names} total={total} page={page} pageSize={pageSize} filter={filter} loading={loading} busy={Boolean(busyId)} cadreDirectory={cadreDirectory} canWrite={canWrite} notes={reviewNotes} setNotes={setReviewNotes} setFilter={setFilter} setPage={setPage} setPageSize={setPageSize} review={(id,action)=>void review(id,action)}/> }
  {view==='records'&&(owned?<><div className="student-center-tabs" role="group" aria-label="班务记录子模块">
    <button type="button" className={recordTab==='activity'?'active':''} aria-pressed={recordTab==='activity'} onClick={()=>setRecordTab('activity')}>业务记录</button>
    <button type="button" className={recordTab==='rules'?'active':''} aria-pressed={recordTab==='rules'} onClick={()=>setRecordTab('rules')}>积分与违纪规则</button></div>
