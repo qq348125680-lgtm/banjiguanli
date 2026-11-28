@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-11-28",
+  "release_target": "智慧班级工作台 V7.0 最小可用正式版（班主任、班干部）",
+  "disclaimer": "这是人工维护的验收台账，不是运行环境的自动认证，更不能据此自动启用生产写入。",
+  "requirements": [
+    {
+      "id": "react_ci",
+      "name": "Node 测试、TypeScript/Vite 构建和 HTTP 冒烟",
+      "status": "passed",
+      "evidence": [
+        "https://github.com/qq348125680-lgtm/banjiguanli/actions/runs/46152967925"
+      ]
+    },
+    {
+      "id": "safe_preview",
+      "name": "无数据、无写入的安全技术预览",
+      "status": "passed",
+      "evidence": [
+        "https://github.com/qq348125680-lgtm/banjiguanli/actions/runs/46152967885"
+      ]
+    },
+    {
+      "id": "isolated_postgres",
+      "name": "隔离 PostgreSQL 的权限、并发、回滚与虚构数据恢复演练",
+      "status": "passed",
+      "evidence": [
+        "https://github.com/qq348125680-lgtm/banjiguanli/actions/runs/46127146493"
+      ]
+    },
+    {
+      "id": "supabase_staging",
+      "name": "独立 Supabase 测试环境与安全迁移",
+      "status": "blocked",
+      "reason": "未确认建立独立测试环境，禁止向学校正式库安装测试迁移",
+      "evidence": []
+    },
+    {
+      "id": "auth_rls",
+      "name": "班主任与班干部真实测试账号登录、停用及跨班权限",
+      "status": "not_tested",
+      "reason": "尚未在独立 Supabase 环境完成真实 JWT/RLS 双账号验收",
+      "evidence": []
+    },
+    {
+      "id": "attendance_flow",
+      "name": "考勤登记→待审核→班主任审批→正式考勤完整事务",
+      "status": "not_tested",
+      "reason": "只验证隔离 PostgreSQL 合约，尚未在 Supabase Auth 和浏览器中连通",
+      "evidence": []
+    },
+    {
+      "id": "security_review",
+      "name": "生产数据库高权限函数安全审查",
+      "status": "blocked",
+      "reason": "已发现 SECURITY DEFINER 的匿名与登录角色可执行警告，尚未逐函数审核",
+      "evidence": []
+    },
+    {
+      "id": "recovery",
+      "name": "真实登录环境下的备份恢复、断网与并发异常演练",
+      "status": "not_tested",
+      "reason": "隔离 PostgreSQL 恢复演练已完成，真实测试环境及发布回退未演练",
+      "evidence": []
+    },
+    {
+      "id": "device_acceptance",
+      "name": "班主任和班干部手机、电脑操作回归验收",
+      "status": "not_tested",
+      "reason": "有响应式源码和预览构建，但缺少真实账号端到端实测",
+      "evidence": []
+    },
+    {
+      "id": "formal_deployment",
+      "name": "经批准的正式地址、账号入口和发布回退方案",
+      "status": "blocked",
+      "reason": "现有 GitHub Pages 仅技术预览，不能用于管理真实学生",
+      "evidence": []
+    }
+  ]
+}
