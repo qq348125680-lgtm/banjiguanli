@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createSafeWorkflow} from '../src/lib/safe-workflow.mjs';
 import {uncertainWriteOutcome} from '../src/lib/domain.mjs';
+import {withUncertainWriteDeadline} from '../src/lib/write-deadline.mjs';
 const cid='11111111-1111-4111-8111-111111111111';
 const sid='22222222-2222-4222-8222-222222222222';
 const uid='33333333-3333-4333-8333-333333333333';
@@ -67,4 +68,20 @@ test('Alpha46 staging schema blocks duplicate pending submissions without removi
  assert.match(pre,/duplicate_pending_groups/);
  assert.match(pre,/pending_unique_index_installed/);
  assert.match(rollback,/drop index if exists public.v7_pending_student_day_unique/);
+});
+
+test('Alpha46 hung write response is ambiguous, not rejected as a rolled-back transaction',async()=>{
+ let callCount=0;
+ await assert.rejects(()=>withUncertainWriteDeadline(()=>{callCount++;return new Promise(()=>{})},60),error=>{
+  assert.equal(error.code,'V7_OUTCOME_UNKNOWN');
+  assert.equal(uncertainWriteOutcome(error),true);
+  return true;
+ });
+ assert.equal(callCount,1);
+});
+test('Alpha46 successful write response remains successful and known validation failure stays definite',async()=>{
+ assert.equal(await withUncertainWriteDeadline(async()=>({id:'confirmed'}),100).then(x=>x.id),'confirmed');
+ await assert.rejects(()=>withUncertainWriteDeadline(async()=>{throw Object.assign(Error('wrong student'),{code:'23514'})},100),err=>{
+  assert.equal(uncertainWriteOutcome(err),false);return true;
+ });
 });
