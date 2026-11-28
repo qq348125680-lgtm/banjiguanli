@@ -1,4 +1,6 @@
 import {validateRecordPage,validateRecordDates} from './class-records.mjs';
+import {buildClassEventFeed} from './class-event-system.mjs';
+import {buildClassRelationships} from './class-relationships.mjs';
 /** V7 Alpha8 safe read-only bridge. Never calls insert/update/delete/upsert/rpc. */
 export const MAPPING=Object.freeze({
   submissions:'cadre_submissions',students:'students',classes:'classes',delegates:'class_delegates',
@@ -109,6 +111,51 @@ export function createReadOnlyBridge(client){
   return {students,rooms,beds,delegates,seat};
  }
 
+
+ /** Owner-only recent event read model; current class students checked once.
+  * At most 20 entries per category; family communication content is never fetched.
+  * Missing categories are flagged rather than misrepresented as empty.
+  */
+ async function classEventsForOwner(classId){
+  assertUuid(classId);
+  await verifyOwner(classId);
+  const members=await studentsForOwner(classId);
+  if(members.length>500)throw Error('班级人数超出事件视图安全上限');
+  const ids=members.map(s=>s.id);
+  const defs=[
+   ['考勤','attendance','id,student_id,on_date,status','on_date'],
+   ['请假','leave_requests','id,student_id,start_on,category,status','start_on'],
+   ['违纪','incidents','id,student_id,happened_on,category,points','happened_on'],
+   ['积分','point_events','id,student_id,happened_on,rule_code,status','happened_on'],
+   ['值日','duty_assignments','id,student_id,duty_date,area,status','duty_date'],
+   ['家校沟通','family_contacts','id,student_id,contacted_on','contacted_on']
+  ];
+  if(!ids.length)return buildClassEventFeed(defs.map(([kind])=>({kind,records:[]})),members);
+  const streams=await Promise.all(defs.map(async([kind,table,fields,date])=>{
+   try{
+    let q=client.from(table).select(fields).in('student_id',ids);
+    if(kind==='值日')q=q.eq('class_id',classId);
+    const {data,error}=await q.order(date,{ascending:false}).limit(20);
+    if(error)throw error;
+    return {kind,records:data??[]};
+   }catch{return {kind,error:true,records:[]}}
+  }));
+  return buildClassEventFeed(streams,members);
+ }
+ /** Current, verified owner relationships only; no parent/guardian guessing.
+  * Disabled干部 remain visible so the teacher can inspect historical binding.
+  */
+ async function classRelationshipsForOwner(classId,className){
+  assertUuid(classId);
+  const u=await user();
+  await verifyOwner(classId);
+  const members=await studentsForOwner(classId);
+  const {data,error}=await client.from('class_delegates')
+   .select('class_id,user_id,student_id,duty,enabled').eq('class_id',classId).limit(200);
+  if(error)throw error;
+  return buildClassRelationships({classId,className,ownerId:u.id,students:members,delegates:data??[]});
+ }
+
  const DOSSIER_TABLES=Object.freeze({
   '考勤':{table:'attendance',fields:'id,on_date,status,note,created_at',order:'on_date'},
   '请假':{table:'leave_requests',fields:'id,start_on,end_on,category,status,reason,created_at',order:'start_on'},
@@ -151,5 +198,5 @@ export function createReadOnlyBridge(client){
   }));
   return {student,sections:Object.fromEntries(results)};
  }
- return Object.freeze({user,ownedClasses,authorizedClasses,studentsForOwner,submissionsForOwner,mySubmissions,pendingCountForOwner,auditForOwner,dossierForOwner,dossierPageForOwner,classRecordsForOwner,classOrganizationForOwner,pointRulesForOwner,cadreDirectoryForOwner});
+ return Object.freeze({user,ownedClasses,authorizedClasses,studentsForOwner,submissionsForOwner,mySubmissions,pendingCountForOwner,auditForOwner,dossierForOwner,dossierPageForOwner,classRecordsForOwner,classOrganizationForOwner,classEventsForOwner,classRelationshipsForOwner,pointRulesForOwner,cadreDirectoryForOwner});
 }
