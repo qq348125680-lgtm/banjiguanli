@@ -36,3 +36,17 @@
  .audit-item .item-top{align-items:flex-start}
  .pagination{gap:8px;flex-wrap:wrap}
 }
+
+/* Alpha39: read-only statistics from scoped, loaded data only. */
+.report-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0 22px}
+.report-metric{padding:17px;background:#f8faff;border:1px solid #e8edf8;border-radius:13px;min-width:0}
+.report-metric span,.report-metric small{display:block;color:#77859d;font-size:12px}
+.report-metric strong{display:block;font-size:27px;margin:7px 0;color:#3b4d77}
+.report-breakdown{border-top:1px solid #edf0f5;padding-top:18px}
+.report-breakdown h3{font-size:14px;margin:0 0 8px}
+.report-status-list{display:grid;gap:12px;margin:16px 0 22px}
+.report-status{display:grid;grid-template-columns:68px minmax(0,1fr) 35px;align-items:center;gap:12px;color:#61718b;font-size:12px}
+.report-status strong{text-align:right}
+.report-track{height:10px;border-radius:20px;overflow:hidden;background:#edf1f8}
+.report-fill{height:100%;background:#697cc3;border-radius:20px}
+@media(max-width:700px){.report-metrics{grid-template-columns:1fr;gap:9px}.report-metric{padding:13px}.report-metric strong{font-size:23px}.report-status{gap:8px}}
