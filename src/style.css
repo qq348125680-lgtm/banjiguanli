@@ -244,3 +244,13 @@
  .recovery-row{align-items:stretch;flex-direction:column}
  .recovery-row .button{width:100%;min-height:44px}
 }
+
+/* Alpha47: one-tap attendance status on phones; desktop dropdown unchanged. */
+.attendance-mobile-status{display:none}
+@media(max-width:700px){
+ .attendance-status-desktop{display:none!important}
+ .attendance-mobile-status{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:13px}
+ .attendance-mobile-status button{border:1px solid #dfe6f4;border-radius:11px;min-height:46px;padding:9px 5px;background:#fff;color:#51627f;font-size:13px;font-weight:650}
+ .attendance-mobile-status button.active,.attendance-mobile-status button[aria-pressed="true"]{color:#425ab2;background:#edf1ff;border-color:#8ca3ee;box-shadow:inset 0 0 0 1px #8ca3ee}
+ .attendance-mobile-status button:focus-visible{outline:3px solid #9caff6;outline-offset:2px}
+}
