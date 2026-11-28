@@ -5,7 +5,7 @@ const V='123e4567-e89b-42d3-a456-426614174001';
 let calls=[];
 const client={auth:{getUser:async()=>({data:{user:{id:U}},error:null})},
  rpc:async (name,args)=>{calls.push({name,args});return {data:name==='v7_cadre_roster'?[{student_id:V,student_no:'001',student_name:'测试学生'}]:{status:'已通过'},error:null}},
- from:(table)=>({insert:(payload)=>({select:()=>({single:async()=>{calls.push({table,payload});return{data:{id:V},error:null}}})})})};
+ from:(table)=>({insert:(payload)=>({select:()=>({single:async()=>{calls.push({table,payload});return{data:{id:V},error:null}}})}),select:()=>{const q={eq:()=>q,order:()=>q,limit:async()=>({data:[],error:null})};return q}})};
 const api=createSafeWorkflow(client);
 const valid={classId:U,studentId:V,entryType:'考勤',date:'2026-11-26',status:'迟到',note:'测试'};
 await assert.rejects(api.submit({...valid,entryType:'成长积分'}),/仅开放考勤/);
