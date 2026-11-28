@@ -64,7 +64,7 @@ test('public preview does not expose student names or invented report figures',(
  const preview=read('src/components/WeeklyCaseArchivePreview.tsx');
  const parent=read('src/components/SafePreviewWorkspace.tsx');
  assert.match(parent,/<WeeklyCaseArchivePreview\/>/);
- assert.match(preview,/不带学生隐私/);
+ assert.match(preview,/不含学生隐私/);
  assert.match(preview,/无数据预览/);
  assert.doesNotMatch(preview,/\.rpc\(|\.from\(|\.insert\(|\.update\(|真实学生姓名|138\d{8}/);
 });
