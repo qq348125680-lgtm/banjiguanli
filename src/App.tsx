@@ -86,7 +86,7 @@ export default function App(){
   const marker=user?.id&&classId?inspectPendingMarker(browserSessionStorage(),'review',{accountId:user.id,classId}):null;
   setUncertainReview(marker?.id&&user?{accountId:user.id,classId,id:marker.id}:null);
  },[classId,user?.id]);
- const fetchDossierPage=useCallback(async(section:'考勤'|'请假'|'违纪'|'积分'|'值日',targetPage:number,targetPageSize:number):Promise<DossierPage>=>{
+ const fetchDossierPage=useCallback(async(section:'考勤'|'请假'|'违纪'|'积分'|'值日'|'家校沟通',targetPage:number,targetPageSize:number):Promise<DossierPage>=>{
   if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking||!dossierId)throw new Error('当前无权读取档案');
   return bridges.reader.dossierPageForOwner(classId,dossierId,section,{page:targetPage,pageSize:targetPageSize});
  },[bridges,user,classId,owned,isAuthorizedClass,authorizationBlocked,authorizationChecking,dossierId]);
