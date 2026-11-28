@@ -68,7 +68,7 @@ export function createEventCaseApi(client){
  async function history(classId,caseId){
   await user();assertUuid(classId);assertUuid(caseId);
   const {data,error}=await client.from('v7_event_case_history')
-   .select('id,case_id,action,actor_id,from_status,to_status,note,created_at')
+   .select('id,case_id,action,actor_id,from_status,to_status,previous_assignee,next_assignee,note,created_at')
    .eq('class_id',classId).eq('case_id',caseId).order('created_at',{ascending:true}).limit(100);
   if(error)throw error;return data??[];
  }
