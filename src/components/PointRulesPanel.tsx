@@ -21,7 +21,7 @@ export function PointRulesPanel({load}:{load:()=>Promise<Rule[]>}){
   <div className="point-rule-grid">{filtered.map(rule=>{
    let value;
    let trialError='';
-   try{value=previewPointRule(rule,counts[rule.id]??1,overrides[rule.id]===undefined?null:overrides[rule.id])}
+   try{value=previewPointRule(rule,counts[rule.id]??1,!overrides[rule.id]?.trim()?null:overrides[rule.id])}
    catch(e){trialError=e instanceof Error?e.message:'无法试算'}
    return <article key={rule.id} className="point-rule-item">
     <div className="point-rule-head"><strong>{rule.label||'未命名规则'}</strong><span>{rule.enabled?'已启用':'已停用'}</span></div>
