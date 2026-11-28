@@ -20,6 +20,19 @@ export function createSafeWorkflow(client) {
     }).select('id,class_id,student_id,status,created_at').single();
     if(error)throw error;return data;
   }
+  // Read-only reconciliation after an interrupted write. RLS restricts result to
+  // the requesting delegate's own submissions. No automatic second INSERT.
+  async function verifySubmission({classId,studentId,date}){
+    const u=await user();assertUuid(classId);assertUuid(studentId);
+    if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)||!Number.isFinite(Date.parse(date+'T00:00:00Z'))||new Date(date+'T00:00:00Z').toISOString().slice(0,10)!==date)throw Error('核对日期不合法');
+    const {data,error}=await client.from('cadre_submissions')
+      .select('id,student_id,occurred_on,entry_type,status,details,created_at')
+      .eq('class_id',classId).eq('submitted_by',u.id)
+      .eq('student_id',studentId).eq('occurred_on',date).eq('entry_type','考勤')
+      .order('created_at',{ascending:false}).limit(20);
+    if(error)throw error;
+    return (data??[]).filter(item=>item.student_id===studentId&&item.occurred_on===date&&item.entry_type==='考勤');
+  }
   async function review(submissionId,action,note=''){
     await user();assertUuid(submissionId);
     if(!['approve','reject'].includes(action))throw Error('审核动作无效');
@@ -29,5 +42,5 @@ export function createSafeWorkflow(client) {
       p_submission_id:submissionId,p_action:action,p_note:note.trim()
     });if(error)throw error;return data;
   }
-  return Object.freeze({roster,submit,review});
+  return Object.freeze({roster,submit,verifySubmission,review});
 }
