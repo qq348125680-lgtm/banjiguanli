@@ -1,49 +1,44 @@
-# 智慧班级工作台 V7.0 Alpha 32
+# 智慧班级工作台 V7.0 Alpha 40 — 独立测试分支
 
-**请先阅读 README_ALPHA32.md。** 本版本仍未通过生产构建与线上权限验收。
+> **当前是安全开发/技术预览版本，不是正式可投入日常管理的新系统。** 生产业务仍使用原有班级管理系统。不要覆盖数据库、改动旧版部署或向公开仓库提交真实学生资料。
 
-# 当前迭代：V7.0 Alpha 31
+## 当前构建基线
 
-详见 `README_ALPHA31.md` 和 `ACCEPTANCE_ALPHA31.md`。
+- React + TypeScript + Vite 单页应用，部署分支：`test/v7-build-verification`
+- GitHub Actions：Node 测试、TypeScript 严格检查、Vite 生产构建、产物/密钥扫描及 HTTP 预览冒烟测试
+- GitHub Pages 公网技术预览：https://qq348125680-lgtm.github.io/banjiguanli/
+- 本测试分支最近一次构建验收：**159 项测试通过，0 失败**（run [46118426288](https://github.com/qq348125680-lgtm/banjiguanli/actions/runs/46118426288)）
+- 技术预览部署成功：run [46118426302](https://github.com/qq348125680-lgtm/banjiguanli/actions/runs/46118426302)
 
-## 前一阶段 Alpha 30
+公开技术预览故意使用空数据库配置并关闭业务写入：**它只验证页面加载，不提供真实登录、学生数据或考勤操作。**
 
-请先阅读 [README_ALPHA30.md](README_ALPHA30.md)。本工程为待验收源码，不可直接覆盖正式线上系统。
+## 已开发并通过自动测试的安全只读功能
 
-# Alpha 29 更新
+| 模块 | 当前能力 | 边界 |
+| --- | --- | --- |
+| 学生中心 | 学号/姓名搜索、5/10/20 人分页、个人五类档案分页 | 学生敏感身份字段不从此列表读取 |
+| 座位宿舍 | 当前班级座位号、宿舍和床位对应的已授权只读展示 | 不擅自重新安排座位、寝室 |
+| 班干部组织 | 当前班级已授权干部职责、启停及权限摘要 | 不自动修改授权 |
+| 考勤助手 | 姓名/学号过滤、未提交筛选、定位下一位、会话内去重统计 | 正式业务写入开关关闭 |
+| 审核记录 | 状态分页、待审核区分、操作安全防重 | 审核服务端事务尚未完成隔离验收 |
+| 班务记录 | 班主任只读查询考勤、请假、违纪、积分、值日和家校沟通；日期与学生筛选、5/10/20 条分页 | 家校沟通禁止在本入口 CSV 导出 |
+| 导出 | 当前已授权页的非家校记录 CSV（防表格公式注入） | 不批量导出学生身份证/手机等信息 |
+| 数据分析 | 已授权范围可见人数、当前已加载审核分布与待审计数 | 不将单页统计虚称全班总数 |
+| 操作审计 | 中文业务摘要、真实操作人 UID、分页 | 无法确认的操作者不虚构姓名 |
 
-详见 `README_ALPHA29.md` 与 `ACCEPTANCE_ALPHA29.md`。
+所有上述模块需要在**有权限的隔离测试环境真实登录后**进一步进行手机、电脑浏览器验收；GitHub Pages 安全公开预览不能展示这些真实数据界面。
 
-> 最新修复和验收边界请先阅读 [README_ALPHA26.md](README_ALPHA26.md)。
+## 严格上线门禁
 
-# Alpha 19 注意事项
+1. 只在独立 Supabase 测试项目验证实际老师与班干部两种账号；先验证 RLS，再开放浏览器数据连接。
+2. 现有生产数据库没有 `v7_cadre_roster` 与 `v7_review_attendance` 两个关键函数。班干部花名册读取与考勤事务目前不能按 V7 的预期闭环。
+3. Supabase 安全顾问此前报告多个可执行 SECURITY DEFINER 函数警告。逐项审核，不能直接全量撤销权限干扰正式系统。
+4. `VITE_ENABLE_WORKFLOW_WRITES=false` 保持关闭。未经验收，禁止发布任何真实写入/审批功能。
+5. 跨账号、跨班级、停用/撤销授权、网络异常、切后台恢复、手机触控和电脑桌面均须测试，保留原系统回退方案。
 
-参见 `README_ALPHA19.md`。当前仍为开发源码，默认关闭真实业务写入。
-
-# 智慧班级工作台 V7.0 Alpha 18
-
-本版本延续 Alpha 17 React + TypeScript 工程，**不是可直接替换线上系统的正式版**。
-
-## 代码变动
-
-- 新增 `src/lib/scope-loader.mjs`，并行加载学生名单、审核记录、待审核总数和操作日志，每项单独捕获错误。
-- React `App.tsx` 只更新成功读取的数据；某一类查询失败不再清空其他类别的成功查询结果。
-- 学生人数显示引入 `rosterLoaded`，无法读取名单时显示「—」，不再假装为零。
-- 保留账号、班级切换的请求序号与清空旧数据逻辑，不能展示跨班陈旧记录。
-- 增加6项独立加载测试，原有回归测试继续运行。
-
-## 安全边界
-
-- 未更改线上 Supabase 项目、SQL、GitHub 或学生数据。
-- 默认关闭写入；只有在测试数据库部署、权限验证通过后才能考虑启用。
-- `sql/alpha9_PROPOSED_NOT_APPLIED.sql` 是历史待审核迁移草案，**不得直接在生产库运行**。
-- `public.v7_cadre_roster` 和 `public.v7_review_attendance` 在当前真实库中此前未检测到，未完成正式双账号验收。
-- 已知部分旧版 SECURITY DEFINER 函数存在 Supabase 安全顾问警告，需单独评估，不能盲目批量撤销权限。
-
-## 本地启动（有网络的电脑）
+## 本地编译（仅开发人员）
 
 ```bash
-cp .env.example .env.local
 npm install
 npm test
 npm run verify:source
@@ -51,4 +46,6 @@ npm run build
 npm run dev
 ```
 
-`.env.local` 仅使用公开 publishable/anon key，不得填写 service_role 或 secret key。正式部署需验证 RLS、接口可用性和手机/电脑端浏览器交互。
+开发本地 `.env.local` 仅限浏览器安全的 publishable key；不得使用 service_role / secret key。不要把此文件或学生资料提交到公开仓库。
+
+查看 [Alpha 38 权限验收报告](ACCEPTANCE_ALPHA38_READONLY.md) 和 [线上技术预览验收说明](ONLINE_PREVIEW_ACCEPTANCE.md)。
