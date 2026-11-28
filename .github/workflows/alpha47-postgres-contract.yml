@@ -1,0 +1,65 @@
+name: V7 isolated PostgreSQL17 RLS and transaction contract
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - test/v7-build-verification
+    paths:
+      - '.github/workflows/alpha47-postgres-contract.yml'
+      - 'sql/alpha45_STAGING_ONLY_SAFE_MIGRATION.sql'
+      - 'sql/alpha45_STAGING_ONLY_ROLLBACK.sql'
+      - 'sql/alpha45_PREFLIGHT_READONLY.sql'
+      - 'tests/postgres/**'
+permissions:
+  contents: read
+jobs:
+  isolated-postgres-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic-contract-only
+          POSTGRES_DB: v7_contract_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d v7_contract_test"
+          --health-interval 4s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: synthetic-contract-only
+      PGDATABASE: v7_contract_test
+      PGCONNECT_TIMEOUT: '10'
+    steps:
+      - name: Checkout safe development branch
+        uses: actions/checkout@v4
+      - name: Install isolated PostgreSQL client
+        run: |
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y postgresql-client
+          fi
+          psql --version
+      - name: Seed strictly synthetic students, owners, delegates and RLS
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/bootstrap.sql
+      - name: Apply Alpha45/47 draft in disposable PostgreSQL only
+        run: psql -X -v ON_ERROR_STOP=1 -f sql/alpha45_STAGING_ONLY_SAFE_MIGRATION.sql
+      - name: Prove scope checks and atomic approval / rejection
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/permission-transactions.sql
+      - name: Race two independent approvals against one pending request
+        run: bash tests/postgres/concurrent-review.sh
+      - name: Roll back only added V7 database objects
+        run: psql -X -v ON_ERROR_STOP=1 -f sql/alpha45_STAGING_ONLY_ROLLBACK.sql
+      - name: Verify no data loss and no new object remains
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/rollback-assert.sql
+      - name: Explain environment scope
+        run: |
+          echo "PASS: ephemeral local PostgreSQL 17 completed RLS, RPC, concurrency and rollback checks."
+          echo "No Supabase project credentials, connections, production data or personal student records used."
