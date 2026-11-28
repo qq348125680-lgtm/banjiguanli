@@ -1,3 +1,4 @@
+import {withReadDeadline} from '../lib/read-deadline.mjs';
 import {useEffect,useRef,useState} from 'react';
 import {CLASS_RECORD_KINDS,describeClassRecord,exportRecordPageCsv} from '../lib/class-records.mjs';
 import type {StudentItem} from '../lib/bridge';
@@ -17,7 +18,7 @@ export function ClassRecordsPanel({load}:{load:Load}){
  const seq=useRef(0);
  useEffect(()=>{
   const current=++seq.current;setBusy(true);setError('');setSnapshot(null);setRoster([]);
-  load(kind,page,pageSize,{studentId,startOn,endOn}).then(data=>{if(seq.current===current){setSnapshot({key:queryKey,data});setRoster(data.students)}})
+  withReadDeadline(()=>load(kind,page,pageSize,{studentId,startOn,endOn})).then(data=>{if(seq.current===current){setSnapshot({key:queryKey,data});setRoster(data.students)}})
    .catch(()=>{if(seq.current===current)setError('当前记录读取失败或授权已失效，请核对日期、学生与读取权限后重试。')})
    .finally(()=>{if(seq.current===current)setBusy(false)});
   return ()=>{seq.current++};
