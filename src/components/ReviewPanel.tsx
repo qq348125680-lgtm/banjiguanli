@@ -2,7 +2,7 @@ import type {Submission} from '../lib/bridge';
 import {canReviewSubmission} from '../lib/domain.mjs';
 import {Badge,Button} from './Common';
 import {reviewPageDigest} from '../lib/review-page-digest.mjs';
-export type ReviewPanelProps={owned:boolean;items:Submission[];names:Map<string,string>;total:number|null;page:number;pageSize:number;filter:string;loading:boolean;busy:boolean;cadreDirectory:{uid:string;name:string|null;duty:string;enabled:boolean}[];canWrite:boolean;notes:Record<string,string>;setNotes:(fn:(v:Record<string,string>)=>Record<string,string>)=>void;setFilter:(s:string)=>void;setPage:(fn:(v:number)=>number)=>void;setPageSize:(n:number)=>void;review:(id:string,action:'approve'|'reject')=>void};
+export type ReviewPanelProps={owned:boolean;items:Submission[];names:Map<string,string>;total:number|null;page:number;pageSize:number;filter:string;loading:boolean;busy:boolean;cadreDirectory:{uid:string;name:string|null;duty:string;enabled:boolean}[];uncertainReviewId:string|null;verifyReview:()=>void;canWrite:boolean;notes:Record<string,string>;setNotes:(fn:(v:Record<string,string>)=>Record<string,string>)=>void;setFilter:(s:string)=>void;setPage:(fn:(v:number)=>number)=>void;setPageSize:(n:number)=>void;review:(id:string,action:'approve'|'reject')=>void};
 export function ReviewPanel(p:ReviewPanelProps){
  const pages=p.total===null?null:Math.max(1,Math.ceil(p.total/p.pageSize));
  const reviewSummary=reviewPageDigest(p.items);
@@ -10,6 +10,7 @@ export function ReviewPanel(p:ReviewPanelProps){
  const actorNames=new Map(p.cadreDirectory.map(d=>[d.uid,d]));
  return <section className="panel"><div className="panel-head"><div><h2>{p.owned?'班主任审核中心':'我的提交记录'}</h2><p>真实记录按身份和班级权限读取；审批前服务端必须再次验证状态。</p></div><span className="count">{p.total===null?'数量未知':`${p.total} 条`}</span></div>
  {p.owned&&<div className="review-digest" role="status"><strong>当前页审核提醒</strong><div><span>本页待审核 <b>{reviewSummary.counts.pending}</b></span><span>本页已通过 <b>{reviewSummary.counts.approved}</b></span><span>本页已驳回 <b>{reviewSummary.counts.rejected}</b></span></div><small>仅统计本次加载的 {reviewSummary.counts.total} 条记录，不能作为全班审核总数；页面刷新后重新计算。</small></div>}
+ {p.owned&&p.uncertainReviewId&&<div className="notice" role="alert"><strong>审核结果尚未确认</strong><p>服务器可能已经完成批准或驳回，请先核对记录状态，当前申请不可重复审核。</p><button type="button" className="record-refresh" disabled={p.busy||p.loading} onClick={p.verifyReview}>{p.busy?'核对中…':'核对审核结果'}</button></div>}
  {p.owned&&reviewSummary.submitters.length>0&&<details className="review-cadre-summary"><summary>按提交账号核对本页班干部工作（{reviewSummary.submitters.length} 个账号）</summary>
   <p className="muted">只按审核记录中的真实提交 UID 分组，不推测操作人姓名；此表仅覆盖当前页，并非全部班干部完成量。</p>
   <div className="review-cadre-list">{reviewSummary.submitters.map(s=><div key={s.actorId} className="review-cadre-row"><div className="review-cadre-actor">{actorNames.get(s.actorId)?.name?<strong>{actorNames.get(s.actorId)?.name} · {actorNames.get(s.actorId)?.duty}{actorNames.get(s.actorId)?.enabled?'':'（已停用）'}</strong>:<strong>操作人未关联学生姓名</strong>}<code title={s.actorId}>{s.actorId}</code></div><span>本页 {s.visible} 条</span><span>待审 {s.pending}</span><span>已通过 {s.approved}</span></div>)}</div></details>}
@@ -24,8 +25,8 @@ export function ReviewPanel(p:ReviewPanelProps){
  </div>}
  {p.owned&&i.status==='待审核'&&i.entry_type!=='考勤'&&<p className="muted">该类型尚未迁移到 V7 审批接口，请在旧版正式系统处理，避免误提交。</p>}
  {p.owned&&i.status==='待审核'&&i.entry_type==='考勤'&&<div className="review-actions"><input aria-label="审核意见" placeholder="审核意见；驳回时必填" maxLength={500} value={p.notes[i.id]??''} onChange={e=>p.setNotes(v=>({...v,[i.id]:e.target.value}))}/>
- <Button disabled={!p.canWrite||p.busy||Boolean(hints.get(i.id)?.missingStatus)||!canReviewSubmission(p.items,i.id,'approve')} onClick={()=>p.review(i.id,'approve')}>批准并入账</Button>
- <Button secondary disabled={!p.canWrite||p.busy||!canReviewSubmission(p.items,i.id,'reject')||!(p.notes[i.id]??'').trim()} onClick={()=>p.review(i.id,'reject')}>驳回</Button></div>}</article>)}</div>
+ <Button disabled={!p.canWrite||p.busy||p.uncertainReviewId===i.id||Boolean(hints.get(i.id)?.missingStatus)||!canReviewSubmission(p.items,i.id,'approve')} onClick={()=>p.review(i.id,'approve')}>批准并入账</Button>
+ <Button secondary disabled={!p.canWrite||p.busy||p.uncertainReviewId===i.id||!canReviewSubmission(p.items,i.id,'reject')||!(p.notes[i.id]??'').trim()} onClick={()=>p.review(i.id,'reject')}>驳回</Button></div>}</article>)}</div>
  {p.items.length===0&&!p.loading&&<p className="muted">当前筛选下无可见记录；如有加载错误，请以提示信息为准。</p>}
  <div className="pagination"><Button secondary disabled={p.page<=1||p.loading} onClick={()=>p.setPage(v=>Math.max(1,v-1))}>上一页</Button><span>第 {p.page} 页 {pages?`/ 共 ${pages} 页`:''}</span><Button secondary disabled={p.loading||p.items.length<p.pageSize||(pages!==null&&p.page>=pages)} onClick={()=>p.setPage(v=>v+1)}>下一页</Button></div></section>;
 }
