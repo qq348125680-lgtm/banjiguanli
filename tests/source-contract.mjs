@@ -40,3 +40,7 @@ assert.match(app,/finishKnownWrite\(browserSessionStorage\(\),'review'/);
 assert.match(app,/hasConfirmedAttendance\(records\)/);
 assert.doesNotMatch(app,/savePendingMarker\(/);
 console.log('Alpha47 pre-write intent and rejected-history contracts: 6 assertions PASS');
+
+// Review recovery is class-scoped, not tied to whichever attendance date is shown.
+assert.equal(app.split('scopeRef.current.startsWith(`${account}:${submittedClass}:`)').length-1,2);
+console.log('Alpha47 class-scoped review recovery: 1 assertion PASS');
