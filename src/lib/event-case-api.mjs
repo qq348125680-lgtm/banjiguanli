@@ -23,15 +23,17 @@ export function validateCaseTransition(id,action,assignee,note=''){
 export function createEventCaseApi(client){
  if(!client?.from||!client?.rpc||!client?.auth?.getUser)throw Error('需要 Supabase 业务客户端');
  async function user(){const {data,error}=await client.auth.getUser();if(error)throw error;if(!data?.user?.id)throw Error('登录已失效');return data.user;}
- async function list(classId,{page=1,pageSize=10,status='全部',studentId='',assignedTo='',createdBy=''}={}){
+ async function list(classId,{page=1,pageSize=10,status='全部',studentId='',caseId='',assignedTo='',createdBy=''}={}){
   await user();assertUuid(classId);validPage(page,pageSize);
   if(status!=='全部'&&!CASE_STATES.includes(status))throw Error('事件状态筛选不合法');
   if(studentId)assertUuid(studentId);
+  if(caseId)assertUuid(caseId);
   if(assignedTo)assertUuid(assignedTo);
   if(createdBy)assertUuid(createdBy);
   let q=client.from('v7_event_cases').select('id,class_id,student_id,kind,title,description,status,assigned_to,created_by,created_at,updated_at,closed_at',{count:'exact'}).eq('class_id',classId);
   if(status!=='全部')q=q.eq('status',status);
   if(studentId)q=q.eq('student_id',studentId);
+  if(caseId)q=q.eq('id',caseId);
   if(assignedTo)q=q.eq('assigned_to',assignedTo);
   if(createdBy)q=q.eq('created_by',createdBy);
   const {data,error,count}=await q.order('updated_at',{ascending:false}).order('id',{ascending:false}).range((page-1)*pageSize,page*pageSize-1);
