@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {pendingRecordChecks} from '../src/lib/record-checks.mjs';
+import {pendingRecordChecks,exportRecordChecksCsv} from '../src/lib/record-checks.mjs';
 test('Alpha42 unnoted absence is suggested for manual verification without changes',()=>{
  const row={id:'att1',student_id:'stu1',status:'缺勤',note:''};
  const result=pendingRecordChecks('考勤',[row]);
@@ -26,4 +26,23 @@ test('Alpha42 session acknowledgment cannot imply official closure or commit wri
  assert.match(src,/不写入数据库、不作为正式结案/);
  assert.match(parent,/key=\{\`\$\{queryKey\}:checks\`\}/);
  assert.doesNotMatch(src,/\.insert\(|\.update\(|\.delete\(|\.rpc\(/);
+});
+
+test('Alpha44 printable follow-up CSV exports just current-page safe checklist fields',()=>{
+ const flags=pendingRecordChecks('考勤',[{id:'a',student_id:'s1',on_date:'2026-11-28',status:'旷课',note:''}]);
+ const csv=exportRecordChecksCsv('考勤',flags,[{id:'s1',name:'王同学'}]);
+ assert.equal(csv.charCodeAt(0),0xfeff);
+ assert.match(csv,/王同学/);assert.match(csv,/2026-11-28/);
+ assert.match(csv,/待人工核实/);
+ assert.doesNotMatch(csv,/家长电话|身份证/);
+ const ui=readFileSync(new URL('../src/components/RecordChecksPanel.tsx',import.meta.url),'utf8');
+ assert.match(ui,/导出当前页待核对清单 CSV/);
+ assert.match(ui,/exportRecordChecksCsv\(kind,checks,students\)/);
+});
+test('Alpha44 private communications and oversized follow-up exports are refused',()=>{
+ assert.throws(()=>exportRecordChecksCsv('家校沟通',[],[]));
+ assert.throws(()=>exportRecordChecksCsv('考勤',Array.from({length:21},(_,i)=>({id:String(i),student_id:'s1',reason:['foo']})),[]));
+ const danger=exportRecordChecksCsv('违纪',[{id:'x',student_id:'s1',date:'2026-11-28',reason:['=FORMULA()']}],[{id:'s1',name:'=CMD()'}]);
+ assert.ok(danger.includes("'=CMD()"));
+ assert.ok(danger.includes('待人工核实'));
 });
