@@ -313,14 +313,15 @@ export default function App(){
   try{
    await withUncertainWriteDeadline(()=>bridges.writer.review(id,action,reviewNotes[id]??''));
    finishKnownWrite(browserSessionStorage(),'review',intentScope,id);
+   if(activeAccountId.current===account&&scopeRef.current.startsWith(`${account}:${submittedClass}:`))setUncertainReview(null);
    if(scopeRef.current===operationScope){
-    setUncertainReview(null);await loadData();
+    await loadData();
     if(scopeRef.current===operationScope)setFeedback(action==='approve'?'审核已通过，服务端事务已返回结果。':'已驳回，并保留审核原因。');
    }
   }catch(e){
    const unknown=uncertainWriteOutcome(e);
    if(!unknown)finishKnownWrite(browserSessionStorage(),'review',intentScope,id);
-   if(scopeRef.current===operationScope){
+   if(activeAccountId.current===account&&scopeRef.current.startsWith(`${account}:${submittedClass}:`)){
     if(unknown){
      setUncertainReview({accountId:account,classId:submittedClass,id});
      setProblem('审核结果未知：可能已经完成数据库事务。已暂停本班后续审核，请先核对服务器状态。');
