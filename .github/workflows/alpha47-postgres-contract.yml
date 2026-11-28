@@ -12,6 +12,7 @@ on:
       - 'sql/v7_case_source_links_STAGING_ONLY*.sql'
       - 'sql/v7_case_deadlines_STAGING_ONLY*.sql'
       - 'sql/v7_case_nudges_STAGING_ONLY*.sql'
+      - 'sql/v7_weekly_case_report_STAGING_ONLY*.sql'
       - 'sql/alpha45_STAGING_ONLY_ROLLBACK.sql'
       - 'sql/alpha45_PREFLIGHT_READONLY.sql'
       - 'tests/postgres/**'
@@ -85,6 +86,12 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f sql/v7_case_source_links_STAGING_ONLY.sql
       - name: Test all six original record links, no duplicates, cross-student denial and no original-row writes
         run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/event-source-link-lifecycle.sql
+      - name: Install read-only owner weekly case activity report
+        run: psql -X -v ON_ERROR_STOP=1 -f sql/v7_weekly_case_report_STAGING_ONLY.sql
+      - name: Verify weekly counts,家校跟进, class owner restrictions and month boundaries
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/weekly-case-report.sql
+      - name: Roll back read-only weekly report RPC
+        run: psql -X -v ON_ERROR_STOP=1 -f sql/v7_weekly_case_report_STAGING_ONLY_ROLLBACK.sql
       - name: Roll back only new event case source mapping
         run: psql -X -v ON_ERROR_STOP=1 -f sql/v7_case_source_links_STAGING_ONLY_ROLLBACK.sql
       - name: Remove only synthetic source fixtures and recheck attendance baseline
