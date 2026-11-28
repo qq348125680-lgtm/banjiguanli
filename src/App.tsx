@@ -16,6 +16,7 @@ import {ClassOrganizationPanel} from './components/ClassOrganizationPanel';
 import {EventCenterPanel} from './components/EventCenterPanel';
 import {EventCaseBoard} from './components/EventCaseBoard';
 import {TaskInboxPanel} from './components/TaskInboxPanel';
+import {GuardianLinksPanel} from './components/GuardianLinksPanel';
 import {RelationshipCenterPanel} from './components/RelationshipCenterPanel';
 import {buildDelegateEventFeed} from './lib/class-event-system.mjs';
 import {AttendanceEntryPanel} from './components/AttendanceEntryPanel';
@@ -64,12 +65,13 @@ export default function App(){
  const [uncertainSubmit,setUncertainSubmit]=useState<{accountId:string;classId:string;day:string;studentId:string}|null>(null);
  const [uncertainReview,setUncertainReview]=useState<{accountId:string;classId:string;id:string}|null>(null);
  const [dossierId,setDossierId]=useState('');
- const [studentTab,setStudentTab]=useState<'roster'|'organization'|'relations'>('roster');
+ const [studentTab,setStudentTab]=useState<'roster'|'organization'|'relations'|'guardians'>('roster');
  const [recordTab,setRecordTab]=useState<'activity'|'rules'|'events'|'cases'>('activity');
  const [recordFocusKind,setRecordFocusKind]=useState('考勤');
  const [caseDraft,setCaseDraft]=useState<{studentId:string;kind:string;title:string}|null>(null);
  const [caseStudentId,setCaseStudentId]=useState(''),[caseFocusId,setCaseFocusId]=useState('');
  const [linkedStudentId,setLinkedStudentId]=useState('');
+ const [guardianFocusStudentId,setGuardianFocusStudentId]=useState('');
  const [cadreDirectory,setCadreDirectory]=useState<{uid:string;name:string|null;duty:string;enabled:boolean}[]>([]);
  const [authorizationChecking,setAuthorizationChecking]=useState(false);
  const [authorizationBlocked,setAuthorizationBlocked]=useState(false);
@@ -82,7 +84,7 @@ export default function App(){
  const isAuthorizedClass=Boolean(classId)&&authorizedClassIds.includes(classId);
  const owned=classes.some(c=>c.id===classId);
  useEffect(()=>{
-  setDossierId('');setStudentTab('roster');setRecordTab('activity');setCaseDraft(null);setCaseStudentId('');setCaseFocusId('');setLinkedStudentId('');setReviewNotes({});setBusyId('');setFeedback('');
+  setDossierId('');setStudentTab('roster');setRecordTab('activity');setCaseDraft(null);setCaseStudentId('');setCaseFocusId('');setLinkedStudentId('');setGuardianFocusStudentId('');setReviewNotes({});setBusyId('');setFeedback('');
   const marker=user?.id&&classId?inspectPendingMarker(browserSessionStorage(),'review',{accountId:user.id,classId}):null;
   setUncertainReview(marker?.id&&user?{accountId:user.id,classId,id:marker.id}:null);
  },[classId,user?.id]);
@@ -117,6 +119,10 @@ export default function App(){
  }
  function openExactCase(caseId:string){
   setCaseDraft(null);setCaseStudentId('');setCaseFocusId(caseId);setRecordTab('cases');selectView('records');
+ }
+ function openStudentGuardians(studentId:string){
+  if(!owned)return;
+  setGuardianFocusStudentId(studentId);setStudentTab('guardians');selectView('students');
  }
  function openStudentCases(studentId:string){
   setCaseDraft(null);setCaseStudentId(studentId);setCaseFocusId('');setRecordTab('cases');selectView('records');
@@ -466,10 +472,11 @@ export default function App(){
  {!classId?<div className="panel"><h2>暂无可访问班级</h2><p className="muted">请确认班主任所有权或班干部授权状态；不要通过浏览器密钥绕过。</p><Button onClick={()=>void verifiedRefresh()} secondary>重新验证班级授权</Button></div>:<>
  {view==='dashboard'&&<><div className="stats"><div className="metric"><span>学生</span><b>{!rosterLoaded?'—':students.length}</b><small>当前授权班级 · 无法读取不显示为零</small></div><div className="metric"><span>待审核</span><b>{owned?pendingLabel(pendingCount):'—'}</b><small>全班精确计数；失败显示—</small></div><div className="metric"><span>账号身份</span><b className="metric-word">{owned?'班主任':'班干部'}</b><small>来自现有权限</small></div></div><section className="panel"><h2>常用操作</h2><div className="quick-grid"><Button onClick={()=>selectView('students')} secondary>学生查询</Button><Button onClick={()=>selectView('entry')} secondary>考勤提交</Button><Button onClick={()=>selectView('review')} secondary>审核记录</Button><Button onClick={()=>{setLinkedStudentId('');setRecordTab('events');selectView('records')}} secondary>事件中心</Button><Button onClick={()=>{setCaseDraft(null);setCaseStudentId('');setCaseFocusId('');setRecordTab('cases');selectView('records')}} secondary>事件工单</Button><Button onClick={()=>{setLinkedStudentId('');setStudentTab('relations');selectView('students')}} secondary>用户关系</Button></div></section>{!authorizationChecking&&!authorizationBlocked&&isAuthorizedClass&&<TaskInboxPanel key={`${user.id}:${classId}:inbox`} load={fetchTaskInbox} roster={roster} onOpen={openExactCase}/>}</>}
  {view==='students'&&<>
-   {owned&&<div className="student-center-tabs" role="group" aria-label="学生中心子模块"><button type="button" aria-pressed={studentTab==='roster'} className={studentTab==='roster'?'active':''} onClick={()=>setStudentTab('roster')}>花名册与档案</button><button type="button" aria-pressed={studentTab==='organization'} className={studentTab==='organization'?'active':''} onClick={()=>setStudentTab('organization')}>座位 · 宿舍 · 班干部</button><button type="button" aria-pressed={studentTab==='relations'} className={studentTab==='relations'?'active':''} onClick={()=>{setLinkedStudentId('');setStudentTab('relations')}}>用户关系</button></div>}
-   {(!owned||studentTab==='roster')&&<><StudentsPanel students={students} search={search} onSearch={setSearch} loading={loading} onSelect={owned?setDossierId:undefined} selectedId={dossierId}/>{owned&&dossierId&&<StudentDossierPanel student={students.find(st=>st.id===dossierId)} fetchPage={fetchDossierPage} onOpenCases={openStudentCases} onClose={()=>setDossierId('')}/>}</>}
+   {owned&&<div className="student-center-tabs" role="group" aria-label="学生中心子模块"><button type="button" aria-pressed={studentTab==='roster'} className={studentTab==='roster'?'active':''} onClick={()=>setStudentTab('roster')}>花名册与档案</button><button type="button" aria-pressed={studentTab==='organization'} className={studentTab==='organization'?'active':''} onClick={()=>setStudentTab('organization')}>座位 · 宿舍 · 班干部</button><button type="button" aria-pressed={studentTab==='relations'} className={studentTab==='relations'?'active':''} onClick={()=>{setLinkedStudentId('');setStudentTab('relations')}}>用户关系</button><button type="button" aria-pressed={studentTab==='guardians'} className={studentTab==='guardians'?'active':''} onClick={()=>{setGuardianFocusStudentId('');setStudentTab('guardians')}}>家庭联系人</button></div>}
+   {(!owned||studentTab==='roster')&&<><StudentsPanel students={students} search={search} onSearch={setSearch} loading={loading} onSelect={owned?setDossierId:undefined} selectedId={dossierId}/>{owned&&dossierId&&<StudentDossierPanel student={students.find(st=>st.id===dossierId)} fetchPage={fetchDossierPage} onOpenCases={openStudentCases} onOpenGuardians={openStudentGuardians} onClose={()=>setDossierId('')}/>}</>}
    {owned&&studentTab==='organization'&&<ClassOrganizationPanel key={`${user.id}:${classId}`} load={fetchClassOrganization}/>}
-   {owned&&studentTab==='relations'&&<RelationshipCenterPanel key={`${user.id}:${classId}:relations`} load={fetchRelationships} onStudent={openEventStudent} onEvents={openLinkedEvents} focusStudentId={linkedStudentId} onClearFocus={()=>setLinkedStudentId('')}/>}  
+   {owned&&studentTab==='relations'&&<RelationshipCenterPanel key={`${user.id}:${classId}:relations`} load={fetchRelationships} onStudent={openEventStudent} onEvents={openLinkedEvents} focusStudentId={linkedStudentId} onClearFocus={()=>setLinkedStudentId('')}/>}
+   {owned&&studentTab==='guardians'&&<GuardianLinksPanel key={`${user.id}:${classId}:guardians:${guardianFocusStudentId}`} api={bridges!.guardians} classId={classId} students={roster} canWrite={canWrite} initialStudentId={guardianFocusStudentId} onStudent={openEventStudent}/>}  
   </>}
  {view==='entry'&&<AttendanceEntryPanel roster={roster} completed={submittedSession} uncertainStudentId={uncertainSubmit?.accountId===user.id&&uncertainSubmit?.classId===classId&&uncertainSubmit?.day===day?uncertainSubmit.studentId:null} verifyUncertain={()=>void reconcileUncertainSubmission()} selected={selected} setSelected={setSelected} loading={loading} busy={Boolean(busyId)} day={day} setDay={setDay} attendance={attendance} setAttendance={setAttendance} note={note} setNote={setNote} classId={classId} owned={owned} canSubmit={canSubmit&&!Boolean(uncertainSubmit?.accountId===user.id&&uncertainSubmit?.classId===classId&&uncertainSubmit?.day===day)} submit={()=>void submit()}/> }
  {view==='review'&&<ReviewPanel owned={owned} items={items} names={names} total={total} page={page} pageSize={pageSize} filter={filter} loading={loading} busy={Boolean(busyId)} cadreDirectory={cadreDirectory} uncertainReviewId={uncertainReview?.accountId===user.id&&uncertainReview?.classId===classId?uncertainReview.id:null} verifyReview={()=>void reconcileUncertainReview()} canWrite={canWrite&&!Boolean(uncertainReview?.accountId===user.id&&uncertainReview?.classId===classId)} notes={reviewNotes} setNotes={setReviewNotes} setFilter={setFilter} setPage={setPage} setPageSize={setPageSize} review={(id,action)=>void review(id,action)}/> }
