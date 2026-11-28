@@ -11,6 +11,9 @@ test('new event tables are isolated staging-only with role-controlled selects an
  assert.match(sql,/on conflict\(class_id,request_key\) do nothing/);
  assert.match(sql,/v_case\.status='已结案'/);
  assert.match(sql,/to authenticated/);
+ assert.match(sql,/v7_event_case_assignees\(p_class_id uuid\)/);
+ const api=text('src/lib/event-case-api.mjs');
+ assert.match(api,/client\.rpc\('v7_event_case_assignees'/);
  assert.doesNotMatch(sql,/grant (insert|update|delete|all) on public\.v7_event_cases to authenticated/i);
 });
 test('event case board uses existing class account scope and respects write toggle',()=>{
