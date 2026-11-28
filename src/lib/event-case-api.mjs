@@ -41,6 +41,22 @@ export function createEventCaseApi(client){
   const {data,error,count}=await q.order('updated_at',{ascending:false}).order('id',{ascending:false}).range((page-1)*pageSize,page*pageSize-1);
   if(error)throw error;return {items:data??[],count:count??null,page,pageSize};
  }
+ /** Actual per-student case status totals, computed server-side with exact
+  * counts rather than relying on a limited first page.
+  */
+ async function studentSummary(classId,studentId){
+  await user();assertUuid(classId);assertUuid(studentId);
+  const pairs=await Promise.all(CASE_STATES.map(async status=>{
+   const {count,error}=await client.from('v7_event_cases')
+    .select('id',{count:'exact',head:true})
+    .eq('class_id',classId).eq('student_id',studentId).eq('status',status);
+   if(error||!Number.isSafeInteger(count)||count<0)
+    throw Error('学生事件工单统计未读取完整，不能显示零值');
+   return [status,count];
+  }));
+  const counts=Object.fromEntries(pairs);
+  return {counts,total:CASE_STATES.reduce((sum,status)=>sum+counts[status],0)};
+ }
  /** Class owner and current enabled delegate get their own actionable task
   * totals. Every bucket is a separate RLS-scoped database query.
   */
@@ -126,5 +142,5 @@ export function createEventCaseApi(client){
   if(error)throw error;if(!data||data.id!==caseId||!CASE_STATES.includes(data.status))throw Error('工单变更结果未能核实');
   return data;
  }
- return Object.freeze({list,taskInbox,sourceLinks,history,assignees,findByRequestKey,create,transition});
+ return Object.freeze({list,studentSummary,taskInbox,sourceLinks,history,assignees,findByRequestKey,create,transition});
 }
