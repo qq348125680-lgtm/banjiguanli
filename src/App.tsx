@@ -23,6 +23,7 @@ import {createAuthBootstrapGate} from './lib/auth-bootstrap.mjs';
 import {invalidateSelectedClass} from './lib/authorization-race.mjs';
 import {decideReadFailure} from './lib/read-failure-policy.mjs';
 import {withReadDeadline} from './lib/read-deadline.mjs';
+import {withUncertainWriteDeadline} from './lib/write-deadline.mjs';
 
 type View='dashboard'|'students'|'entry'|'review'|'records'|'reports'|'archive';
 const nav:[View,string,typeof LayoutDashboard][]=[['dashboard','工作台',LayoutDashboard],['students','学生中心',Users],['entry','班级事务',ClipboardList],['review','审核中心',ClipboardCheck],['records','班务记录',BookOpen],['reports','数据分析',ShieldCheck],['archive','工作档案',Archive]];
@@ -242,7 +243,7 @@ export default function App(){
   const operationScope=scopeRef.current, submittedStudent=selected, submittedDay=day, submittedClass=classId, submittedAccount=user!.id;
   setBusyId('submit');setProblem('');setFeedback('');
   try{
-   await bridges.writer.submit({classId:submittedClass,studentId:submittedStudent,entryType:'考勤',date:submittedDay,status:attendance,note});
+   await withUncertainWriteDeadline(()=>bridges.writer.submit({classId:submittedClass,studentId:submittedStudent,entryType:'考勤',date:submittedDay,status:attendance,note}));
    if(scopeRef.current===operationScope){
     setUncertainSubmit(null);setNote('');setPage(1);
     setSubmittedSession(prev=>markSubmissionConfirmed(prev,submittedStudent));
