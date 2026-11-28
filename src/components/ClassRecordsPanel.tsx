@@ -3,6 +3,7 @@ import {CLASS_RECORD_KINDS,describeClassRecord,exportRecordPageCsv} from '../lib
 import type {StudentItem} from '../lib/bridge';
 import {DutyAdvisorPanel} from './DutyAdvisorPanel';
 import {AttendanceDigestPanel} from './AttendanceDigestPanel';
+import {RecordChecksPanel} from './RecordChecksPanel';
 type Filters={studentId?:string;startOn?:string;endOn?:string};
 type PageData={items:Record<string,unknown>[];count:number|null;page:number;pageSize:number;students:StudentItem[]};
 type Load=(kind:string,page:number,size:number,filters:Filters)=>Promise<PageData>;
@@ -55,6 +56,7 @@ export function ClassRecordsPanel({load}:{load:Load}){
   })}</div>
   {kind==='考勤'&&result&&<AttendanceDigestPanel key={`${queryKey}:attendance-digest`} records={result.items} students={result.students}/>}
   {kind==='值日'&&result&&<DutyAdvisorPanel key={`${queryKey}:duty-advisor`} records={result.items} students={result.students}/>}
+  {result&&<RecordChecksPanel key={`${queryKey}:checks`} kind={kind} records={result.items} students={result.students}/>}
   <div className="record-pagination" role="navigation" aria-label="班务记录分页"><button type="button" disabled={busy||page<=1} onClick={()=>setPage(v=>Math.max(1,v-1))}>上一页</button><span>第 {page} / {pages??'—'} 页</span><button type="button" disabled={busy||Boolean(error)||!result||(pages!==null&&page>=pages)||(!pages&&result.items.length<pageSize)} onClick={()=>setPage(v=>v+1)}>下一页</button></div>
   <p className="muted">导出仅包含当前已加载页的姓名、日期及业务摘要，不包含身份证、电话等身份信息。新建、更改、审批仍在旧版正式系统操作。</p>
  </section>;
