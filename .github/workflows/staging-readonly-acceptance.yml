@@ -1,0 +1,34 @@
+name: V7 staging synthetic Auth and RLS acceptance (READ ONLY)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  staging-auth-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: v7-staging
+    env:
+      V7_STAGING_MODE: READ_ONLY_SYNTHETIC
+      V7_STAGING_URL: ${{ secrets.V7_STAGING_URL }}
+      V7_STAGING_EXPECTED_REF: ${{ secrets.V7_STAGING_EXPECTED_REF }}
+      V7_STAGING_PUBLISHABLE_KEY: ${{ secrets.V7_STAGING_PUBLISHABLE_KEY }}
+      V7_STAGING_CLASS_ID: ${{ secrets.V7_STAGING_CLASS_ID }}
+      V7_STAGING_OTHER_CLASS_ID: ${{ secrets.V7_STAGING_OTHER_CLASS_ID }}
+      V7_STAGING_OWNER_EMAIL: ${{ secrets.V7_STAGING_OWNER_EMAIL }}
+      V7_STAGING_OWNER_PASSWORD: ${{ secrets.V7_STAGING_OWNER_PASSWORD }}
+      V7_STAGING_CADRE_EMAIL: ${{ secrets.V7_STAGING_CADRE_EMAIL }}
+      V7_STAGING_CADRE_PASSWORD: ${{ secrets.V7_STAGING_CADRE_PASSWORD }}
+      V7_STAGING_OUTSIDER_EMAIL: ${{ secrets.V7_STAGING_OUTSIDER_EMAIL }}
+      V7_STAGING_OUTSIDER_PASSWORD: ${{ secrets.V7_STAGING_OUTSIDER_PASSWORD }}
+    steps:
+      - name: Checkout test branch
+        uses: actions/checkout@v4
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned packages
+        run: npm install --no-audit --no-fund
+      - name: Reject production, then verify synthetic test account RLS and RPC (no writes)
+        run: npm run staging:readonly
