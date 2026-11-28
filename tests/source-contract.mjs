@@ -16,3 +16,10 @@ console.log('Alpha12 additional static contract: 5 assertions PASS');
 
 assert.match(app,/<AttendanceEntryPanel/);assert.match(app,/<ReviewPanel/);assert.match(entry,/!p\.completed\.includes/);
 console.log("Alpha14 extracted component contracts: 3 assertions PASS");
+
+// Alpha 47: the public entry must not advertise a stale release or imply live access.
+const landing=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
+assert.match(landing,/<title>智慧班级工作台 V7\.0 Alpha 47 · 安全技术预览<\/title>/);
+assert.match(landing,/不连接学生数据，不开放业务写入/);
+assert.doesNotMatch(landing,/Alpha10|Alpha 10/);
+console.log('Alpha47 public landing metadata contract: 3 assertions PASS');
