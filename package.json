@@ -11,7 +11,9 @@
     "verify:source": "node tests/source-contract.mjs",
     "preflight:offline": "node scripts/offline-preflight.mjs",
     "verify:dist": "node scripts/verify-dist.mjs",
-    "smoke:preview": "node scripts/smoke-preview.mjs"
+    "smoke:preview": "node scripts/smoke-preview.mjs",
+    "release:status": "node scripts/release-gate.mjs --status",
+    "release:gate": "node scripts/release-gate.mjs --require-ready"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.57.0",
