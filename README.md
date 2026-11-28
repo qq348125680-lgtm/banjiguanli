@@ -1,4 +1,4 @@
-# 智慧班级工作台 V7.0 Alpha 42 — 独立测试分支
+# 智慧班级工作台 V7.0 Alpha 43 — 独立测试分支
 
 > **当前是安全开发/技术预览版本，不是正式可投入日常管理的新系统。** 生产业务仍使用原有班级管理系统。不要覆盖数据库、改动旧版部署或向公开仓库提交真实学生资料。
 
@@ -7,8 +7,8 @@
 - React + TypeScript + Vite 单页应用，部署分支：`test/v7-build-verification`
 - GitHub Actions：Node 测试、TypeScript 严格检查、Vite 生产构建、产物/密钥扫描及 HTTP 预览冒烟测试
 - GitHub Pages 公网技术预览：https://qq348125680-lgtm.github.io/banjiguanli/
-- 本测试分支最近一次构建验收：**180 项测试通过，0 失败（构建记录：[46119878022](https://github.com/qq348125680-lgtm/banjiguanli/actions/runs/46119878022)）**
-- 最新 Alpha 42 Pages 部署可在 Actions 中独立核对：[安全预览工作流](https://github.com/qq348125680-lgtm/banjiguanli/actions/workflows/pages-safe-preview.yml)
+- 上一次完整构建基线：180/180 项测试通过（[记录](https://github.com/qq348125680-lgtm/banjiguanli/actions/runs/46119982734)）。Alpha 43 新增安全回归正在进行，以最新 Actions 运行结果为准。
+- 最新 Alpha 43 Pages 部署可在 Actions 中独立核对：[安全预览工作流](https://github.com/qq348125680-lgtm/banjiguanli/actions/workflows/pages-safe-preview.yml)
 
 公开技术预览故意使用空数据库配置并关闭业务写入：**它只验证页面加载，不提供真实登录、学生数据或考勤操作。**
 
@@ -32,7 +32,7 @@
 
 积分规则暂依赖现有数据库 RLS（仅班主任），尚未经过两账号浏览器验证。此前上传的学生手册是扫描页，文本无法可靠提取，因此未擅自把任何推测的条款写成正式分值。
 
-所有上述模块需要在**有权限的隔离测试环境真实登录后**进一步进行手机、电脑浏览器验收；GitHub Pages 安全公开预览不能展示这些真实数据界面。
+Alpha 43 安全强化：班级权限复核失败或授权被撤销时直接卸载所有业务子模块，防止内部缓存残留；学生名单读取失败即阻断班级页面，其他敏感模块失败则清除对应结果；授权和读请求增加有限超时与可重试提示。\n\n所有上述模块需要在**有权限的隔离测试环境真实登录后**进一步进行手机、电脑浏览器验收；GitHub Pages 安全公开预览不能展示这些真实数据界面。
 
 ## 严格上线门禁
 
