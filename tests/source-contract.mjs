@@ -51,3 +51,11 @@ assert.match(css,/\.sidebar nav\{[^}]*overflow-y:auto/);
 assert.match(css,/\.sidebar nav\{[^}]*overscroll-behavior:contain/);
 assert.match(css,/@media\(max-height:520px\)/);
 console.log('Alpha47 safe scroll CSS: 3 assertions PASS');
+
+// Alpha47: public preview must never turn on unfinished write paths by one flag.
+assert.match(client,/VITE_V7_WRITE_GATE_ACKNOWLEDGED==='true'/);
+assert.match(client,/configured&&workflowWritesRequested&&writeGateAcknowledged/);
+const pagesWorkflow=fs.readFileSync(new URL('../.github/workflows/pages-safe-preview.yml',import.meta.url),'utf8');
+assert.match(pagesWorkflow,/VITE_ENABLE_WORKFLOW_WRITES: 'false'/);
+assert.match(pagesWorkflow,/VITE_V7_WRITE_GATE_ACKNOWLEDGED: 'false'/);
+console.log('Alpha47 double write gate and public preview guard: 4 assertions PASS');
