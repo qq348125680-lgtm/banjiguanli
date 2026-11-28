@@ -15,6 +15,7 @@ type Api={
  findByRequestKey:(classId:string,requestKey:string)=>Promise<CaseRow|null>;
  transition:(id:string,action:string,assignee:string|null,note:string)=>Promise<{id:string;status:string}>;
  setDeadline:(id:string,dueOn:string|null,expectedDueOn:string|null,note:string)=>Promise<{id:string;status:string;due_on:string|null}>;
+ sendNudge:(id:string,note:string)=>Promise<{id:string;case_id:string;status:string}>;
 };
 type Props={api:Api;classId:string;userId:string;owned:boolean;canWrite:boolean;students:StudentItem[];onStudent:(id:string)=>void;initialDraft?:{studentId:string;kind:string;title:string;sourceRecordId?:string}|null;initialStudentId?:string;initialCaseId?:string;initialStatus?:string};
 const newKey=()=>crypto.randomUUID();
@@ -29,6 +30,7 @@ export function EventCaseBoard({api,classId,userId,owned,canWrite,students,onStu
  const [candidates,setCandidates]=useState<Candidate[]>([]),[candidateError,setCandidateError]=useState('');
  const [targetById,setTargetById]=useState<Record<string,string>>({}),[notes,setNotes]=useState<Record<string,string>>({}),[transferNotes,setTransferNotes]=useState<Record<string,string>>({});
  const [deadlineDrafts,setDeadlineDrafts]=useState<Record<string,string>>({}),[deadlineNotes,setDeadlineNotes]=useState<Record<string,string>>({});
+ const [nudgeNotes,setNudgeNotes]=useState<Record<string,string>>({}),[sentNudges,setSentNudges]=useState<Record<string,boolean>>({});
  const [expandedId,setExpandedId]=useState(''),[history,setHistory]=useState<Record<string,CaseHistory[]>>({}),[historyBusy,setHistoryBusy]=useState(false);
  const [busyId,setBusyId]=useState('');
  const seq=useRef(0),actionLock=useRef(false);
@@ -96,6 +98,23 @@ export function EventCaseBoard({api,classId,userId,owned,canWrite,students,onStu
   }catch(e){setError('本次处理结果尚未确认，切勿连续重复点击。请重新读取工单和处理流水核对：'+(e instanceof Error?e.message:'操作失败'))}
   finally{setBusyId('');actionLock.current=false}
  };
+ const sendReminder=async(row:CaseRow)=>{
+  if(actionLock.current||!owned||!canWrite||row.status!=='处理中'
+   ||!row.assigned_to||!row.due_on||row.due_on>schoolToday())return;
+  const note=nudgeNotes[row.id]??'';
+  if(note.trim().length<2)return;
+  actionLock.current=true;setBusyId(row.id);setError('');setNotice('');
+  try{
+   await api.sendNudge(row.id,note);
+   setSentNudges(prev=>({...prev,[row.id]:true}));
+   setNudgeNotes(prev=>({...prev,[row.id]:''}));
+   setNotice('催办已写入工单流水，负责人在工作台刷新后可查看待反馈催办。');
+   setHistory(prev=>{const copy={...prev};delete copy[row.id];return copy});
+   setRevision(v=>v+1);
+  }catch(e){
+   setError('本次催办结果未确认，请查看处理流水或刷新催办待办后再操作：'+(e instanceof Error?e.message:'网络失败'));
+  }finally{setBusyId('');actionLock.current=false}
+ };
  const changeDeadline=async(row:CaseRow)=>{
   if(actionLock.current||!owned||!canWrite||row.status==='已结案')return;
   const next=(deadlineDrafts[row.id]??row.due_on??'')||null;
@@ -162,6 +181,11 @@ export function EventCaseBoard({api,classId,userId,owned,canWrite,students,onStu
      <label>处理截止日期<input type="date" value={deadlineDrafts[row.id]??row.due_on??''} disabled={Boolean(busyId)} onChange={e=>setDeadlineDrafts(p=>({...p,[row.id]:e.target.value}))}/></label>
      <label>期限调整说明<textarea rows={2} maxLength={500} value={deadlineNotes[row.id]??''} disabled={Boolean(busyId)} onChange={e=>setDeadlineNotes(p=>({...p,[row.id]:e.target.value}))} placeholder="例如：约定周五前完成家校回访；调整或取消也要说明原因"/></label>
      <button type="button" className="button secondary" disabled={Boolean(busyId)||(deadlineDrafts[row.id]??row.due_on??'')===(row.due_on??'')||(deadlineNotes[row.id]??'').trim().length<2} onClick={()=>void changeDeadline(row)}>{!row.due_on?'设置期限':(deadlineDrafts[row.id]??row.due_on)===''?'取消期限':'保存期限调整'}</button>
+    </div>}
+    {canWrite&&owned&&row.status==='处理中'&&row.assigned_to&&row.due_on&&row.due_on<=today&&<div className="case-nudge-controls">
+     <div><strong>到期工单催办</strong><p className="muted">仅限今天到期或已逾期、已指派并仍在处理中的任务；每天最多催办一次。</p></div>
+     <label>催办说明<textarea rows={2} maxLength={500} value={nudgeNotes[row.id]??''} disabled={Boolean(busyId)||Boolean(sentNudges[row.id])} onChange={e=>setNudgeNotes(p=>({...p,[row.id]:e.target.value}))} placeholder="例如：请在放学前核实该生请假情况，并提交处理反馈"/></label>
+     <button type="button" className="button secondary" disabled={Boolean(busyId)||Boolean(sentNudges[row.id])||(nudgeNotes[row.id]??'').trim().length<2} onClick={()=>void sendReminder(row)}>{sentNudges[row.id]?'本页已催办':'催办负责人'}</button>
     </div>}
     {canAssign&&<div className="case-actions case-transfer-controls"><label>{row.assigned_to?'变更负责人':'指派负责人'}<select value={targetById[row.id]??row.assigned_to??''} onChange={e=>setTargetById(p=>({...p,[row.id]:e.target.value}))}><option value="">选择班主任或班干部</option>{candidates.map(c=><option key={c.user_id} value={c.user_id}>{c.student_id?names.get(c.student_id)??'未绑定学生':c.duty} · {c.duty}</option>)}</select></label>{row.assigned_to&&<label>转派原因（必填）<textarea rows={2} maxLength={1000} value={transferNotes[row.id]??''} onChange={e=>setTransferNotes(p=>({...p,[row.id]:e.target.value}))} placeholder="说明负责人变更原因，永久保留在工单流水"/></label>}<button type="button" className="button secondary" disabled={Boolean(busyId)||!(targetById[row.id]??row.assigned_to)||(targetById[row.id]??row.assigned_to)===row.assigned_to||(Boolean(row.assigned_to)&&!(transferNotes[row.id]??'').trim())} onClick={()=>void advance(row,'assign')}>{row.assigned_to?'确认转派':'确认指派'}</button></div>}
     {(canReply||canClose||canReopen)&&<div className="case-actions"><label>处理说明<textarea rows={2} maxLength={1000} value={notes[row.id]??''} onChange={e=>setNotes(p=>({...p,[row.id]:e.target.value}))} placeholder="写明处理情况、复核依据或退回原因"/></label><div className="case-action-buttons">
