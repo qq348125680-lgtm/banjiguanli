@@ -57,7 +57,7 @@ test('homepage and reports respect roles and route to existing case workflow',()
  const preview=read('src/components/SafePreviewWorkspace.tsx');
  assert.match(app,/<CaseDueReminderPanel key=/);
  assert.match(app,/load=\{fetchDueDigest\}/);
- assert.match(app,/owned&&<ClassCaseOverviewPanel/);
+ assert.match(app,/owned&&<><ClassCaseOverviewPanel/);
  assert.match(app,/onStatus=\{openCasesByStatus\}/);
  assert.match(app,/initialStatus=\{caseFilterStatus\}/);
  assert.match(reminders,/到期提醒读取失败/);
