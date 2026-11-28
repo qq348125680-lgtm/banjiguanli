@@ -19,7 +19,7 @@ test('review only pending attendance for both decisions',()=>{
  assert.equal(canReviewSubmission(rows,'1','delete'),false);
 });
 test('approval migration rejects any preexisting attendance, even matching status',()=>{
- const sql=readFileSync(new URL('../sql/alpha9_PROPOSED_NOT_APPLIED.sql',import.meta.url),'utf8');
+ const sql=readFileSync(new URL('../sql/alpha45_STAGING_ONLY_SAFE_MIGRATION.sql',import.meta.url),'utf8');
  assert.match(sql,/insert into public\.attendance\(/i);
  assert.doesNotMatch(sql,/on conflict \(student_id,on_date\) do nothing/i);
  assert.match(sql,/for update/i);
