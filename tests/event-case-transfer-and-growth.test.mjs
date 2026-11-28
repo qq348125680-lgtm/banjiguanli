@@ -30,7 +30,7 @@ test('owner UI shows transfer reason field and old/new identities, no direct tab
  assert.match(panel,/displayActor\(h\.previous_assignee\)/);
  assert.match(panel,/displayActor\(h\.next_assignee\)/);
  assert.match(panel,/candidate===row\.assigned_to/);
- assert.match(api,/previous_assignee,next_assignee,note,created_at/);
+ assert.match(api,/previous_assignee,next_assignee,previous_due_on,next_due_on,note,created_at/);
  assert.doesNotMatch(panel,/\.update\(|\.delete\(|\.insert\(/);
 });
 test('six-category owner student dossier includes bounded family contact metadata only',()=>{
