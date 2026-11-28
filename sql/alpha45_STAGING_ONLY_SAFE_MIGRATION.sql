@@ -5,12 +5,14 @@
 -- This script deliberately leaves the existing cadre INSERT policy in place.
 begin;
 
--- Prevent two unresolved submissions for the same student/date/type even if
--- browser tabs race. If legacy pending duplicates exist, this statement will
+-- Prevent two unresolved ATTENDANCE submissions for the same class/student/date,
+-- even if browser tabs race. Leave leave/discipline requests independent: they
+-- may legitimately have multiple requests on the same day. If old ATTENDANCE
+-- pending duplicates exist, this statement will
 -- FAIL and roll back this entire migration (never silently delete old rows).
 create unique index if not exists v7_pending_student_day_unique
-on public.cadre_submissions(class_id,student_id,entry_type,occurred_on)
-where status='待审核';
+on public.cadre_submissions(class_id,student_id,occurred_on)
+where status='待审核' and entry_type='考勤';
 
 -- A private trigger guarantees student/class consistency at the database level.
 -- A restrictive INSERT policy alone is NOT sufficient in this current schema:
