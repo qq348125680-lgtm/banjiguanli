@@ -13,6 +13,9 @@ import {ReportsPanel} from './components/ReportsPanel';
 import {ClassRecordsPanel} from './components/ClassRecordsPanel';
 import {PointRulesPanel} from './components/PointRulesPanel';
 import {ClassOrganizationPanel} from './components/ClassOrganizationPanel';
+import {EventCenterPanel} from './components/EventCenterPanel';
+import {RelationshipCenterPanel} from './components/RelationshipCenterPanel';
+import {buildDelegateEventFeed} from './lib/class-event-system.mjs';
 import {AttendanceEntryPanel} from './components/AttendanceEntryPanel';
 import {ReviewPanel} from './components/ReviewPanel';
 import {markSubmissionConfirmed,nextOutstanding} from './lib/entry-progress.mjs';
@@ -59,8 +62,9 @@ export default function App(){
  const [uncertainSubmit,setUncertainSubmit]=useState<{accountId:string;classId:string;day:string;studentId:string}|null>(null);
  const [uncertainReview,setUncertainReview]=useState<{accountId:string;classId:string;id:string}|null>(null);
  const [dossierId,setDossierId]=useState('');
- const [studentTab,setStudentTab]=useState<'roster'|'organization'>('roster');
- const [recordTab,setRecordTab]=useState<'activity'|'rules'>('activity');
+ const [studentTab,setStudentTab]=useState<'roster'|'organization'|'relations'>('roster');
+ const [recordTab,setRecordTab]=useState<'activity'|'rules'|'events'>('activity');
+ const [recordFocusKind,setRecordFocusKind]=useState('考勤');
  const [cadreDirectory,setCadreDirectory]=useState<{uid:string;name:string|null;duty:string;enabled:boolean}[]>([]);
  const [authorizationChecking,setAuthorizationChecking]=useState(false);
  const [authorizationBlocked,setAuthorizationBlocked]=useState(false);
@@ -85,6 +89,23 @@ export default function App(){
   if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking)throw Error('当前无权读取班级业务记录');
   return bridges.reader.classRecordsForOwner(classId,kind,{page:targetPage,pageSize:targetPageSize,...filters});
  },[bridges,user,classId,owned,isAuthorizedClass,authorizationBlocked,authorizationChecking]);
+ const fetchEventFeed=useCallback(async()=>{
+  if(!bridges||!user||!classId||!isAuthorizedClass||authorizationBlocked||authorizationChecking)throw Error('当前无权读取班级事件');
+  if(owned)return bridges.reader.classEventsForOwner(classId);
+  const result=await bridges.reader.mySubmissions(classId,{page:1,pageSize:20});
+  return buildDelegateEventFeed(result.items,roster);
+ },[bridges,user?.id,classId,owned,isAuthorizedClass,authorizationBlocked,authorizationChecking,roster]);
+ const fetchRelationships=useCallback(async()=>{
+  if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking)throw Error('当前身份不能查看用户关系');
+  const className=classes.find(c=>c.id===classId)?.name??'当前班级';
+  return bridges.reader.classRelationshipsForOwner(classId,className);
+ },[bridges,user?.id,classId,owned,isAuthorizedClass,authorizationBlocked,authorizationChecking,classes]);
+ function openEventStudent(studentId:string){
+  setStudentTab('roster');selectView('students');setDossierId(studentId);
+ }
+ function openEventRecord(kind:string){
+  setRecordFocusKind(kind);setRecordTab('activity');selectView('records');
+ }
  const fetchPointRules=useCallback(async()=>{
   if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking)throw Error('当前无权读取班级积分规则');
   return bridges.reader.pointRulesForOwner(classId);
@@ -417,19 +438,21 @@ export default function App(){
  <RecoveryInbox items={recoveryQueue.items} unavailable={recoveryQueue.unavailable} truncated={recoveryQueue.truncated} classNames={recoveryClassNames} onLocate={locateRecovery}/>
  {problem&&<Message kind="error" message={problem}/>}{feedback&&<Message kind="success" message={feedback}/>}{loading&&<div className="muted loading" role="status">正在读取数据…</div>}
  {!classId?<div className="panel"><h2>暂无可访问班级</h2><p className="muted">请确认班主任所有权或班干部授权状态；不要通过浏览器密钥绕过。</p><Button onClick={()=>void verifiedRefresh()} secondary>重新验证班级授权</Button></div>:<>
- {view==='dashboard'&&<><div className="stats"><div className="metric"><span>学生</span><b>{!rosterLoaded?'—':students.length}</b><small>当前授权班级 · 无法读取不显示为零</small></div><div className="metric"><span>待审核</span><b>{owned?pendingLabel(pendingCount):'—'}</b><small>全班精确计数；失败显示—</small></div><div className="metric"><span>账号身份</span><b className="metric-word">{owned?'班主任':'班干部'}</b><small>来自现有权限</small></div></div><section className="panel"><h2>常用操作</h2><div className="quick-grid"><Button onClick={()=>selectView('students')} secondary>学生查询</Button><Button onClick={()=>selectView('entry')} secondary>考勤提交</Button><Button onClick={()=>selectView('review')} secondary>审核记录</Button></div></section></>}
+ {view==='dashboard'&&<><div className="stats"><div className="metric"><span>学生</span><b>{!rosterLoaded?'—':students.length}</b><small>当前授权班级 · 无法读取不显示为零</small></div><div className="metric"><span>待审核</span><b>{owned?pendingLabel(pendingCount):'—'}</b><small>全班精确计数；失败显示—</small></div><div className="metric"><span>账号身份</span><b className="metric-word">{owned?'班主任':'班干部'}</b><small>来自现有权限</small></div></div><section className="panel"><h2>常用操作</h2><div className="quick-grid"><Button onClick={()=>selectView('students')} secondary>学生查询</Button><Button onClick={()=>selectView('entry')} secondary>考勤提交</Button><Button onClick={()=>selectView('review')} secondary>审核记录</Button><Button onClick={()=>{setRecordTab('events');selectView('records')}} secondary>事件中心</Button><Button onClick={()=>{setStudentTab('relations');selectView('students')}} secondary>用户关系</Button></div></section></>}
  {view==='students'&&<>
-   {owned&&<div className="student-center-tabs" role="group" aria-label="学生中心子模块"><button type="button" aria-pressed={studentTab==='roster'} className={studentTab==='roster'?'active':''} onClick={()=>setStudentTab('roster')}>花名册与档案</button><button type="button" aria-pressed={studentTab==='organization'} className={studentTab==='organization'?'active':''} onClick={()=>setStudentTab('organization')}>座位 · 宿舍 · 班干部</button></div>}
+   {owned&&<div className="student-center-tabs" role="group" aria-label="学生中心子模块"><button type="button" aria-pressed={studentTab==='roster'} className={studentTab==='roster'?'active':''} onClick={()=>setStudentTab('roster')}>花名册与档案</button><button type="button" aria-pressed={studentTab==='organization'} className={studentTab==='organization'?'active':''} onClick={()=>setStudentTab('organization')}>座位 · 宿舍 · 班干部</button><button type="button" aria-pressed={studentTab==='relations'} className={studentTab==='relations'?'active':''} onClick={()=>setStudentTab('relations')}>用户关系</button></div>}
    {(!owned||studentTab==='roster')&&<><StudentsPanel students={students} search={search} onSearch={setSearch} loading={loading} onSelect={owned?setDossierId:undefined} selectedId={dossierId}/>{owned&&dossierId&&<StudentDossierPanel student={students.find(st=>st.id===dossierId)} fetchPage={fetchDossierPage} onClose={()=>setDossierId('')}/>}</>}
    {owned&&studentTab==='organization'&&<ClassOrganizationPanel key={`${user.id}:${classId}`} load={fetchClassOrganization}/>}
+   {owned&&studentTab==='relations'&&<RelationshipCenterPanel key={`${user.id}:${classId}:relations`} load={fetchRelationships} onStudent={openEventStudent}/>} 
   </>}
  {view==='entry'&&<AttendanceEntryPanel roster={roster} completed={submittedSession} uncertainStudentId={uncertainSubmit?.accountId===user.id&&uncertainSubmit?.classId===classId&&uncertainSubmit?.day===day?uncertainSubmit.studentId:null} verifyUncertain={()=>void reconcileUncertainSubmission()} selected={selected} setSelected={setSelected} loading={loading} busy={Boolean(busyId)} day={day} setDay={setDay} attendance={attendance} setAttendance={setAttendance} note={note} setNote={setNote} classId={classId} owned={owned} canSubmit={canSubmit&&!Boolean(uncertainSubmit?.accountId===user.id&&uncertainSubmit?.classId===classId&&uncertainSubmit?.day===day)} submit={()=>void submit()}/> }
  {view==='review'&&<ReviewPanel owned={owned} items={items} names={names} total={total} page={page} pageSize={pageSize} filter={filter} loading={loading} busy={Boolean(busyId)} cadreDirectory={cadreDirectory} uncertainReviewId={uncertainReview?.accountId===user.id&&uncertainReview?.classId===classId?uncertainReview.id:null} verifyReview={()=>void reconcileUncertainReview()} canWrite={canWrite&&!Boolean(uncertainReview?.accountId===user.id&&uncertainReview?.classId===classId)} notes={reviewNotes} setNotes={setReviewNotes} setFilter={setFilter} setPage={setPage} setPageSize={setPageSize} review={(id,action)=>void review(id,action)}/> }
- {view==='records'&&(owned?<><div className="student-center-tabs" role="group" aria-label="班务记录子模块">
+ {view==='records'&&(!owned?<EventCenterPanel key={`${user.id}:${classId}:own-events`} load={fetchEventFeed} owned={false} onStudent={openEventStudent} onRecord={openEventRecord}/>:<><div className="student-center-tabs" role="group" aria-label="班务记录子模块">
    <button type="button" className={recordTab==='activity'?'active':''} aria-pressed={recordTab==='activity'} onClick={()=>setRecordTab('activity')}>业务记录</button>
-   <button type="button" className={recordTab==='rules'?'active':''} aria-pressed={recordTab==='rules'} onClick={()=>setRecordTab('rules')}>积分与违纪规则</button></div>
-   {recordTab==='activity'&&<ClassRecordsPanel key={`${user.id}:${classId}`} load={fetchClassRecords}/>}
-   {recordTab==='rules'&&<PointRulesPanel key={`${user.id}:${classId}`} load={fetchPointRules}/>}</>:<section className="panel placeholder"><h2>班务记录</h2><p>本入口仅班主任可以查看；班干部请使用授权的考勤提交和我的审核记录。</p></section>)}
+   <button type="button" className={recordTab==='rules'?'active':''} aria-pressed={recordTab==='rules'} onClick={()=>setRecordTab('rules')}>积分与违纪规则</button><button type="button" className={recordTab==='events'?'active':''} aria-pressed={recordTab==='events'} onClick={()=>setRecordTab('events')}>事件中心</button></div>
+   {recordTab==='activity'&&<ClassRecordsPanel key={`${user.id}:${classId}:${recordFocusKind}`} load={fetchClassRecords} initialKind={recordFocusKind}/>}
+   {recordTab==='events'&&<EventCenterPanel key={`${user.id}:${classId}:events`} load={fetchEventFeed} owned={owned} onStudent={openEventStudent} onRecord={openEventRecord}/>} 
+   {recordTab==='rules'&&<PointRulesPanel key={`${user.id}:${classId}`} load={fetchPointRules}/>}</>)
   {view==='archive'&&owned&&<AuditPanel audits={audits} total={auditTotal} page={page} pageSize={pageSize} loading={loading} setPage={setPage} setPageSize={setPageSize}/>}
  {view==='reports'&&<ReportsPanel items={items} rosterCount={students.length} rosterLoaded={rosterLoaded} pendingCount={pendingCount} owned={owned} total={total} loading={loading} onReview={()=>selectView('review')}/>}
   {view==='archive'&&!owned&&<section className="panel placeholder"><div className="placeholder-icon">✧</div><h2>工作档案</h2><p>当前身份无法读取全班操作记录。正式归档功能仍使用旧版系统。</p><Button onClick={()=>selectView('dashboard')} secondary>返回工作台</Button></section>}
