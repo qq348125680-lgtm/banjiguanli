@@ -541,3 +541,26 @@
  .case-due-reminder .panel-head{display:flex;flex-direction:column;align-items:stretch}
  .case-due-reminder .panel-head>button{width:100%;min-height:44px}
 }
+
+/* V7 owner-to-cadre nudge handoff: one business record, no push service. */
+.case-nudge-controls{margin-top:12px;padding:12px 14px;border:1px solid #e2e9f5;border-radius:11px;background:#f8faff;display:grid;grid-template-columns:minmax(0,1fr) minmax(200px,2fr) auto;gap:10px;align-items:end}
+.case-nudge-controls>div strong{font-size:13px;color:#5b6f96}
+.case-nudge-controls .muted{font-size:11px;line-height:1.5;margin-top:5px}
+.case-nudge-controls label{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:12px;color:#617594;font-weight:600}
+.case-nudge-controls textarea{width:100%;min-height:56px;padding:10px;border:1px solid #dce5f2;border-radius:9px;resize:vertical;color:#4d6284;line-height:1.5;font:inherit;background:#fff}
+.case-nudge-controls button{min-height:45px}
+.case-nudge-inbox{min-width:0}
+.case-nudge-inbox .panel-head>button{min-height:42px;flex-shrink:0}
+.case-nudge-count{display:flex;gap:10px;align-items:center;padding:12px 15px;border:1px solid #e3eaf8;background:#f5f8ff;border-radius:10px;margin:11px 0}
+.case-nudge-count strong{font-size:25px;color:#5675ac}
+.case-nudge-count span{font-size:12px;color:#5f7296;font-weight:600}
+.case-nudge-list{border:1px solid #e5ebf5;border-radius:10px;overflow:hidden;margin:10px 0}
+.case-nudge-list>.task-inbox-link{padding:12px 14px}
+.case-nudge-inbox>.muted{font-size:11px;line-height:1.5}
+@media(max-width:780px){
+ .case-nudge-controls{grid-template-columns:1fr}
+ .case-nudge-controls button{width:100%;min-height:46px}
+ .case-nudge-inbox .panel-head{display:flex;flex-direction:column;align-items:stretch}
+ .case-nudge-inbox .panel-head>button{width:100%;min-height:44px}
+ .case-nudge-list>.task-inbox-link{min-height:50px}
+}
