@@ -432,3 +432,40 @@
  .case-transfer-controls .button{min-height:46px}
  .dossier-growth-summary{padding:13px}
 }
+
+/* Explicit teacher-verified family contacts; phone values hidden until owner opens. */
+.guardian-center{min-width:0}
+.guardian-create{padding:16px;border:1px solid #e1e8f6;border-radius:12px;background:#f8faff;margin:15px 0}
+.guardian-create>strong{display:block;margin-bottom:13px;color:#45618d;font-size:14px}
+.guardian-create .case-form-grid label{min-width:0}
+.guardian-create .case-form-grid input,.guardian-create .case-form-grid select{width:100%;min-height:44px;padding:9px 11px;border:1px solid #dfe5f0;border-radius:9px;background:#fff;color:#445974}
+.guardian-filter{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin:15px 0}
+.guardian-filter label{display:flex;gap:6px;flex-direction:column;min-width:150px;flex:1;color:#6d7d97;font-size:12px}
+.guardian-filter select{min-height:42px;border-radius:9px;padding:8px 10px;border:1px solid #dfe5f0;background:#fff;color:#455a7b}
+.guardian-filter>button{min-height:42px}
+.guardian-list{display:grid;gap:12px;margin:15px 0}
+.guardian-row{border:1px solid #e2e9f3;border-radius:12px;background:#fff;padding:15px}
+.guardian-row-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.guardian-row-head strong{font-size:14px;color:#4a6084}
+.guardian-row-head>span:not(.event-state){font-size:12px;color:#7184a1}
+.guardian-row-head .event-state{margin-left:auto}
+.guardian-row>.muted{font-size:12px;margin:10px 0}
+.guardian-phone{background:#f7f9fd;border-radius:8px;padding:9px 11px;display:flex;align-items:center;justify-content:space-between;gap:10px;color:#57709c;font-size:12px}
+.guardian-phone>span{overflow-wrap:anywhere}
+.guardian-phone>button{min-height:40px;flex-shrink:0}
+.guardian-actions{background:#f9fbff;border:1px solid #e5ebf5;border-radius:10px;margin-top:12px;padding:12px}
+.guardian-actions label{display:flex;flex-direction:column;gap:7px;font-size:12px;color:#5d7394;font-weight:650}
+.guardian-actions textarea{width:100%;border:1px solid #dfe5f0;border-radius:9px;padding:10px;resize:vertical;min-height:68px;color:#455974}
+.guardian-actions>div{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
+.guardian-actions .button{min-height:43px}
+@media(max-width:700px){
+ .guardian-create{padding:13px}
+ .guardian-filter{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .guardian-filter label{min-width:0}
+ .guardian-filter>button{grid-column:1/-1;min-height:46px}
+ .guardian-row{padding:12px}
+ .guardian-phone{flex-wrap:wrap;align-items:stretch}
+ .guardian-phone>button{min-height:44px}
+ .guardian-actions>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .guardian-actions .button{min-height:46px}
+}
