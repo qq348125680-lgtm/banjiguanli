@@ -46,6 +46,13 @@ export function createEventCaseApi(client){
   if(error)throw error;
   return [{user_id:u.id,student_id:null,duty:'班主任（本人）',enabled:true},...(data??[])];
  }
+ async function findByRequestKey(classId,requestKey){
+  const u=await user();assertUuid(classId);assertUuid(requestKey);
+  const {data,error}=await client.from('v7_event_cases')
+   .select('id,class_id,student_id,kind,title,description,status,created_by')
+   .eq('class_id',classId).eq('request_key',requestKey).eq('created_by',u.id).maybeSingle();
+  if(error)throw error;return data??null;
+ }
  async function create(input){
   await user();
   const {data,error}=await client.rpc('v7_create_event_case',validateCaseInput(input));
@@ -58,5 +65,5 @@ export function createEventCaseApi(client){
   if(error)throw error;if(!data||data.id!==caseId||!CASE_STATES.includes(data.status))throw Error('工单变更结果未能核实');
   return data;
  }
- return Object.freeze({list,history,assignees,create,transition});
+ return Object.freeze({list,history,assignees,findByRequestKey,create,transition});
 }
