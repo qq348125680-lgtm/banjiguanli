@@ -19,6 +19,6 @@ const js=names.filter(n=>n.endsWith('.js'));
 if(js.length===0)throw Error('No JS build outputs');
 for(const name of js){
  const contents=fs.readFileSync(path.join(assets,name),'utf8');
- if(/SUPABASE_SERVICE_ROLE_KEY|YOUR_PUBLIC_PUBLISHABLE_KEY|sb_secret_[A-Za-z0-9_-]{8,}|(?:service_role\\s*[:=]\\s*["'][^"']{8,})/i.test(contents))throw Error(`Potential secret or placeholder in JS: ${name}`);
+ if(/SUPABASE_SERVICE_ROLE_KEY|YOUR_PUBLIC_PUBLISHABLE_KEY|sb_secret_[A-Za-z0-9_-]{8,}|(?:service_role\s*[:=]\s*["'][^"']{8,})/i.test(contents))throw Error(`Potential secret or placeholder in JS: ${name}`);
 }
 console.log('PASS: index.html, referenced JS/CSS, and emitted JS validated');
