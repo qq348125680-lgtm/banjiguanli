@@ -4,7 +4,7 @@ import {withReadDeadline} from '../lib/read-deadline.mjs';
 import {CASE_KINDS,CASE_STATES} from '../lib/event-case-api.mjs';
 
 type CaseRow={id:string;class_id:string;student_id:string;kind:string;title:string;description:string;status:string;created_by:string;assigned_to:string|null;created_at:string;updated_at:string;closed_at:string|null;request_key?:string};
-type CaseHistory={id:string;action:string;actor_id:string;from_status:string|null;to_status:string;note:string;created_at:string};
+type CaseHistory={id:string;action:string;actor_id:string;from_status:string|null;to_status:string;previous_assignee:string|null;next_assignee:string|null;note:string;created_at:string};
 type Candidate={user_id:string;student_id:string|null;duty:string;enabled:boolean};
 type Api={
  list:(classId:string,params:{page:number;pageSize:number;status:string;studentId?:string;caseId?:string})=>Promise<{items:CaseRow[];count:number|null}>;
@@ -24,12 +24,13 @@ export function EventCaseBoard({api,classId,userId,owned,canWrite,students,onStu
  const [studentId,setStudentId]=useState(initialDraft?.studentId??''),[kind,setKind]=useState(initialDraft&&CASE_KINDS.includes(initialDraft.kind)?initialDraft.kind:'考勤'),[title,setTitle]=useState(initialDraft?.title??''),[description,setDescription]=useState('');
  const [requestKey,setRequestKey]=useState(newKey),[uncertain,setUncertain]=useState(false);
  const [candidates,setCandidates]=useState<Candidate[]>([]),[candidateError,setCandidateError]=useState('');
- const [targetById,setTargetById]=useState<Record<string,string>>({}),[notes,setNotes]=useState<Record<string,string>>({});
+ const [targetById,setTargetById]=useState<Record<string,string>>({}),[notes,setNotes]=useState<Record<string,string>>({}),[transferNotes,setTransferNotes]=useState<Record<string,string>>({});
  const [expandedId,setExpandedId]=useState(''),[history,setHistory]=useState<Record<string,CaseHistory[]>>({}),[historyBusy,setHistoryBusy]=useState(false);
  const [busyId,setBusyId]=useState('');
  const seq=useRef(0),actionLock=useRef(false);
  const names=useMemo(()=>new Map(students.map(x=>[x.id,x.name])),[students]);
  const actors=useMemo(()=>new Map(candidates.map(c=>[c.user_id,c.student_id?(names.get(c.student_id)??c.duty):c.duty])),[candidates,names]);
+ const displayActor=(id:string|null|undefined)=>!id?'未指派':actors.get(id)??(id===userId?'当前账号':'账号 '+id.slice(0,8)+'…');
  const load=async()=>{
   const data=await withReadDeadline(()=>api.list(classId,{page,pageSize:10,status:filter,studentId:studentScope,caseId:caseScope}));
   setCases(data.items);setCount(data.count);return true;
@@ -77,14 +78,14 @@ export function EventCaseBoard({api,classId,userId,owned,canWrite,students,onStu
  const advance=async(row:CaseRow,action:'assign'|'reply'|'close'|'reopen')=>{
   if(actionLock.current||!canWrite)return;
   const candidate=targetById[row.id]??row.assigned_to??'';
-  const note=notes[row.id]??'';
-  if(action==='assign'&&!candidate)return;
+  const note=action==='assign'?(transferNotes[row.id]??''):(notes[row.id]??'');
+  if(action==='assign'&&(!candidate||candidate===row.assigned_to||(row.assigned_to!==null&&!note.trim())))return;
   if(action!=='assign'&&!note.trim())return;
   actionLock.current=true;setBusyId(row.id);setError('');setNotice('');
   try{
    const result=await api.transition(row.id,action,action==='assign'?candidate:null,note);
    setNotice('服务器已确认本次处理：'+result.status+'。正在刷新列表；请勿重复操作。');
-   setNotes(p=>({...p,[row.id]:''}));
+   setNotes(p=>({...p,[row.id]:''}));setTransferNotes(p=>({...p,[row.id]:''}));
    setHistory(p=>{const q={...p};delete q[row.id];return q});
    try{await load()}catch{setError('服务器已处理成功，但页面刷新失败；请点击“重新读取”核对新状态。')}
    setRevision(v=>v+1);
@@ -124,7 +125,7 @@ export function EventCaseBoard({api,classId,userId,owned,canWrite,students,onStu
   {notice&&<p className="notice success" role="status">{notice}</p>}
   <div className="case-list">{cases.map(row=>{
    const isOwner=owned;
-   const canAssign=canWrite&&isOwner&&['待分派','处理中'].includes(row.status);
+   const canAssign=canWrite&&isOwner&&['待分派','处理中','待复核'].includes(row.status);
    const canReply=canWrite&&row.status==='处理中'&&row.assigned_to===userId;
    const canClose=canWrite&&isOwner&&row.status==='待复核';
    const canReopen=canWrite&&isOwner&&['待复核','已结案'].includes(row.status);
@@ -133,8 +134,8 @@ export function EventCaseBoard({api,classId,userId,owned,canWrite,students,onStu
     <div className="case-meta"><span>{names.get(row.student_id)??'学生（未关联当前在读名单）'}</span><span>负责人：{row.assigned_to?(actors.get(row.assigned_to)??'已绑定授权账号'):'待分派'}</span><time>{row.created_at?.slice(0,16).replace('T',' ')}</time></div>
     {row.description&&<p className="case-description">{row.description}</p>}
     <div className="case-options">{owned&&<button type="button" className="record-refresh" onClick={()=>onStudent(row.student_id)}>学生档案</button>}<button type="button" className="record-refresh" onClick={()=>void toggleHistory(row.id)}>{expandedId===row.id?'收起处理流水':'查看处理流水'}</button></div>
-    {expandedId===row.id&&<div className="case-history"><strong>处理时间线</strong>{historyBusy?<p>正在读取…</p>:(history[row.id]??[]).map(h=><div key={h.id} className="case-history-item"><time>{h.created_at?.slice(0,16).replace('T',' ')}</time><b>{h.action}</b><span>{actors.get(h.actor_id)??(h.actor_id===userId?'当前用户':'已授权操作者')}</span><p>{h.note||h.to_status}</p></div>)}</div>}
-    {canAssign&&<div className="case-actions"><label>指派负责人<select value={targetById[row.id]??row.assigned_to??''} onChange={e=>setTargetById(p=>({...p,[row.id]:e.target.value}))}><option value="">选择班主任或班干部</option>{candidates.map(c=><option key={c.user_id} value={c.user_id}>{c.student_id?names.get(c.student_id)??'未绑定学生':c.duty} · {c.duty}</option>)}</select></label><button type="button" className="button secondary" disabled={Boolean(busyId)||!(targetById[row.id]??row.assigned_to)} onClick={()=>void advance(row,'assign')}>确认指派</button></div>}
+    {expandedId===row.id&&<div className="case-history"><strong>处理时间线</strong>{historyBusy?<p>正在读取…</p>:(history[row.id]??[]).map(h=><div key={h.id} className="case-history-item"><time>{h.created_at?.slice(0,16).replace('T',' ')}</time><b>{h.action}</b><span>{displayActor(h.actor_id)}</span>{(h.action==='指派'||h.action==='转派')&&<p className="case-transfer-detail">负责人：{displayActor(h.previous_assignee)} → {displayActor(h.next_assignee)}</p>}<p>{h.note||h.to_status}</p></div>)}</div>}
+    {canAssign&&<div className="case-actions case-transfer-controls"><label>{row.assigned_to?'变更负责人':'指派负责人'}<select value={targetById[row.id]??row.assigned_to??''} onChange={e=>setTargetById(p=>({...p,[row.id]:e.target.value}))}><option value="">选择班主任或班干部</option>{candidates.map(c=><option key={c.user_id} value={c.user_id}>{c.student_id?names.get(c.student_id)??'未绑定学生':c.duty} · {c.duty}</option>)}</select></label>{row.assigned_to&&<label>转派原因（必填）<textarea rows={2} maxLength={1000} value={transferNotes[row.id]??''} onChange={e=>setTransferNotes(p=>({...p,[row.id]:e.target.value}))} placeholder="说明负责人变更原因，永久保留在工单流水"/></label>}<button type="button" className="button secondary" disabled={Boolean(busyId)||!(targetById[row.id]??row.assigned_to)||(targetById[row.id]??row.assigned_to)===row.assigned_to||(Boolean(row.assigned_to)&&!(transferNotes[row.id]??'').trim())} onClick={()=>void advance(row,'assign')}>{row.assigned_to?'确认转派':'确认指派'}</button></div>}
     {(canReply||canClose||canReopen)&&<div className="case-actions"><label>处理说明<textarea rows={2} maxLength={1000} value={notes[row.id]??''} onChange={e=>setNotes(p=>({...p,[row.id]:e.target.value}))} placeholder="写明处理情况、复核依据或退回原因"/></label><div className="case-action-buttons">
      {canReply&&<button type="button" className="button" disabled={Boolean(busyId)||!(notes[row.id]??'').trim()} onClick={()=>void advance(row,'reply')}>提交处理反馈</button>}
      {canClose&&<button type="button" className="button" disabled={Boolean(busyId)||!(notes[row.id]??'').trim()} onClick={()=>void advance(row,'close')}>复核通过并结案</button>}
