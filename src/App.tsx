@@ -306,8 +306,9 @@ export default function App(){
     finishKnownWrite(browserSessionStorage(),'submit',{accountId:pending.accountId,classId:pending.classId,day:pending.day},pending.studentId);
     setRecoveryRevision(v=>v+1);
     setUncertainSubmit(null);
-    setFeedback('已在服务器查询到该学生本日的考勤申请；请到「我的提交记录」核对状态，不要再次提交。');
-    await loadData();
+    const refreshed=await refreshAfterConfirmedWrite(()=>loadData());
+    if(refreshed.ok)setFeedback('已在服务器查询到该学生本日的考勤申请；请到「我的提交记录」核对状态，不要再次提交。');
+    else setProblem('服务器已经查到本次考勤申请，未确认标记已安全核销，但列表刷新失败；请手动重新读取记录，不要再次提交。');
    }else setProblem(records.length?'仅查到历史驳回或状态无法确认的考勤申请，不能证明本次提交已完成；继续锁定，请在旧版核实。':'未查到可见申请，但仍无法证明之前的写入未发生。为避免重复，当前页面继续锁定本次提交，请从旧版核实后再操作。');
   }catch(e){
    if(scopeRef.current===`${pending.accountId}:${pending.classId}:${pending.day}`)
@@ -365,8 +366,9 @@ export default function App(){
     finishKnownWrite(browserSessionStorage(),'review',{accountId:pending.accountId,classId:pending.classId},pending.id);
     setRecoveryRevision(v=>v+1);
     setUncertainReview(null);
-    await loadData();
-    setFeedback('服务器已确认此申请状态：'+record.status+'。请核对实际记录，不要再次批准。');
+    const refreshed=await refreshAfterConfirmedWrite(()=>loadData());
+    if(refreshed.ok)setFeedback('服务器已确认此申请状态：'+record.status+'。请核对实际记录，不要再次批准。');
+    else setProblem('服务器已核实审核状态为「'+record.status+'」，未确认标记已核销，但刷新列表失败；请重新读取，不要再次审批。');
    }else{
     setProblem('服务器目前仍显示待审核，可能存在未完成请求。为避免重复，暂不解锁此申请；请通过正式系统核实。');
    }
