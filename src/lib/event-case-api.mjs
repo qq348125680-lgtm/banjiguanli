@@ -1,6 +1,6 @@
 import {assertUuid} from './supabase-readonly-adapter.mjs';
 import {inboxDefinitions,assertInboxQueryResult,buildInboxSummary} from './event-task-inbox.mjs';
-import {schoolToday,validateSchoolDate,dueReminderDefinitions,verifyDueResponse,verifyWorkloadRows} from './case-deadline-model.mjs';
+import {schoolToday,validateSchoolDate,addSchoolDays,dueReminderDefinitions,verifyDueResponse,verifyWorkloadRows} from './case-deadline-model.mjs';
 import {validateNudgeInput,verifyPendingNudges} from './case-nudge-model.mjs';
 
 export const CASE_KINDS=Object.freeze(['考勤','请假','违纪','积分','值日','家校沟通','其他']);
@@ -96,6 +96,43 @@ export function createEventCaseApi(client){
   return {today,owned,groups,total:groups.reduce((n,g)=>n+g.count,0)};
  }
  /** One owner-only RPC aggregates all state/category/assignee totals. */
+ /** Only verified class owners can enumerate completed work orders.
+  * Archive is a server-paged view over the original cases, not a duplicate table.
+  */
+ async function closedArchive(classId,{page=1,pageSize=10,kind='全部',from='',to=''}={}){
+  const u=await user();assertUuid(classId);validPage(page,pageSize);
+  if(kind!=='全部'&&!CASE_KINDS.includes(kind))throw Error('结案档案类别不合法');
+  if(from)validateSchoolDate(from);
+  if(to)validateSchoolDate(to);
+  if(from&&to&&from>to)throw Error('结案档案开始日期不能晚于结束日期');
+  const {data:ownership,error:oe}=await client.from('classes').select('id')
+   .eq('id',classId).eq('owner_id',u.id).maybeSingle();
+  if(oe)throw oe;
+  if(!ownership)throw Error('当前账号不是该班班主任，不能读取全班结案档案');
+  let q=client.from('v7_event_cases')
+   .select('id,class_id,student_id,kind,title,status,assigned_to,created_by,created_at,closed_at',{count:'exact'})
+   .eq('class_id',classId).eq('status','已结案');
+  if(kind!=='全部')q=q.eq('kind',kind);
+  if(from)q=q.gte('closed_at',from+'T00:00:00+08:00');
+  if(to)q=q.lt('closed_at',addSchoolDays(to,1)+'T00:00:00+08:00');
+  const {data,error,count}=await q.order('closed_at',{ascending:false}).order('id',{ascending:false})
+   .range((page-1)*pageSize,page*pageSize-1);
+  if(error)throw error;
+  if(!Array.isArray(data)||!Number.isSafeInteger(count)||count<0)throw Error('结案档案未完整读取');
+  for(const row of data){
+   if(row.class_id!==classId||row.status!=='已结案'||!row.closed_at||
+      (kind!=='全部'&&row.kind!==kind))throw Error('结案档案存在不属于当前范围的记录');
+  }
+  return {items:data,count,page,pageSize};
+ }
+ /** Owner-only weekly activity aggregates; details remain in their original cases. */
+ async function weeklyReport(classId,weekStart){
+  await user();assertUuid(classId);validateSchoolDate(weekStart);
+  const {data,error}=await client.rpc('v7_weekly_case_report',{p_class_id:classId,p_week_start:weekStart});
+  if(error)throw error;
+  if(!Array.isArray(data))throw Error('周报未从服务器取得完整计数');
+  return data;
+ }
  async function classOverview(classId){
   await user();assertUuid(classId);
   const {data,error}=await client.rpc('v7_class_case_overview',{p_class_id:classId});
@@ -226,5 +263,5 @@ export function createEventCaseApi(client){
   if(error)throw error;if(!data||data.id!==caseId||!CASE_STATES.includes(data.status))throw Error('工单变更结果未能核实');
   return data;
  }
- return Object.freeze({list,studentSummary,taskInbox,dueDigest,classOverview,setDeadline,sendNudge,pendingNudges,sourceLinks,history,assignees,findByRequestKey,create,transition});
+ return Object.freeze({list,closedArchive,weeklyReport,studentSummary,taskInbox,dueDigest,classOverview,setDeadline,sendNudge,pendingNudges,sourceLinks,history,assignees,findByRequestKey,create,transition});
 }
