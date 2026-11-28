@@ -47,7 +47,7 @@ test('existing event can prefill a student-scoped persistent follow-up case with
  const eventPanel=read('src/components/EventCenterPanel.tsx');
  const casePanel=read('src/components/EventCaseBoard.tsx');
  assert.match(eventPanel,/onCreateCase\(item\.studentId,item\.kind,item\.summary,item\.sourceId\)/);
- assert.match(app,/function openCaseFromEvent\(studentId:string,kind:string,summary:string\)/);
+ assert.match(app,/function openCaseFromEvent\(studentId:string,kind:string,summary:string,sourceRecordId:string\)/);
  assert.match(app,/setCaseDraft\(\{studentId,kind,title:/);
  assert.match(app,/initialDraft=\{caseDraft\}/);
  assert.match(casePanel,/initialDraft\?\.studentId/);
