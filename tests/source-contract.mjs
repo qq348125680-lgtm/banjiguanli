@@ -44,3 +44,10 @@ console.log('Alpha47 pre-write intent and rejected-history contracts: 6 assertio
 // Review recovery is class-scoped, not tied to whichever attendance date is shown.
 assert.equal(app.split('scopeRef.current.startsWith(`${account}:${submittedClass}:`)').length-1,2);
 console.log('Alpha47 class-scoped review recovery: 1 assertion PASS');
+
+// Alpha47: sidebar navigation scroll stays internal, both desktop and mobile.
+const css=fs.readFileSync(new URL('../src/style.css',import.meta.url),'utf8');
+assert.match(css,/\.sidebar nav\{[^}]*overflow-y:auto/);
+assert.match(css,/\.sidebar nav\{[^}]*overscroll-behavior:contain/);
+assert.match(css,/@media\(max-height:520px\)/);
+console.log('Alpha47 safe scroll CSS: 3 assertions PASS');
