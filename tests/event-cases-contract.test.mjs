@@ -9,7 +9,7 @@ test('new event tables are isolated staging-only with role-controlled selects an
   assert.ok(sql.includes(marker),'missing '+marker);
  }
  assert.match(sql,/on conflict\(class_id,request_key\) do nothing/);
- assert.match(sql,/v_case\.status<>'已结案'/);
+ assert.match(sql,/v_case\.status='已结案'/);
  assert.match(sql,/to authenticated/);
  assert.doesNotMatch(sql,/grant (insert|update|delete|all) on public\.v7_event_cases to authenticated/i);
 });
