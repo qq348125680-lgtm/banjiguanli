@@ -1,0 +1,78 @@
+name: V7 SAFE public technical preview (no database, no writes)
+on:
+  push:
+    branches: [test/v7-build-verification]
+    paths:
+      - '.github/workflows/pages-safe-preview.yml'
+      - 'src/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'index.html'
+      - 'package.json'
+      - 'vite.config.ts'
+      - 'tsconfig*.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: v7-safe-pages-preview
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VITE_SUPABASE_URL: ''
+      VITE_SUPABASE_PUBLISHABLE_KEY: ''
+      VITE_ENABLE_WORKFLOW_WRITES: 'false'
+    steps:
+      - name: Checkout isolated test branch
+        uses: actions/checkout@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Unit tests
+        run: npm test
+      - name: Build for repository subpath
+        run: npm run build -- --base=/banjiguanli/
+      - name: Verify Pages asset paths, public-only build, and no elevated key
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          const html=fs.readFileSync('dist/index.html','utf8');
+          const refs=[...html.matchAll(/(?:src|href)=["'](\/banjiguanli\/assets\/[^"']+\.(?:js|css))["']/g)].map(m=>m[1]);
+          if(!refs.some(r=>r.endsWith('.js')) || !refs.some(r=>r.endsWith('.css')))throw Error('Missing JS or CSS assets under /banjiguanli/');
+          for(const ref of refs){
+            const target=path.join('dist',ref.replace(/^\/banjiguanli\//,''));
+            if(!fs.existsSync(target) || fs.statSync(target).size===0)throw Error('Missing emitted asset: '+ref);
+          }
+          const js=fs.readdirSync('dist/assets').filter(f=>f.endsWith('.js')).map(f=>fs.readFileSync('dist/assets/'+f,'utf8')).join('\n');
+          if(/sb_secret_[A-Za-z0-9_-]{8,}|SUPABASE_SERVICE_ROLE_KEY|YOUR_PUBLIC_PUBLISHABLE_KEY/.test(js))throw Error('Potential privileged credential or placeholder in JS');
+          if(js.includes('https://maqxyvqayilmibdrkmxu.supabase.co'))throw Error('Live project URL must not be in public safe preview');
+          console.log('PASS: safe GitHub Pages build, subpath assets, no live DB config');
+          NODE
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - name: Upload static preview
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy technical preview
+        id: deployment
+        uses: actions/deploy-pages@v4
