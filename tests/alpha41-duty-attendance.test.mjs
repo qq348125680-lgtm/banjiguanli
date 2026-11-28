@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {dutyWeight,dutyWorkload,proposeDutySubstitute} from '../src/lib/duty-planner.mjs';
+import {dutyWeight,dutyWorkload,proposeDutySubstitute,planDutyRotation,DUTY_TASKS} from '../src/lib/duty-planner.mjs';
 import {weekStartMonday,attendanceDigest} from '../src/lib/attendance-digest.mjs';
 const people=Array.from({length:10},(_,i)=>({id:'s'+(i+1),student_no:String(i+1).padStart(2,'0'),name:'学生'+(i+1)}));
 const duty=[
@@ -64,4 +64,32 @@ test('Alpha41 UI uses read-only source fields and clearly warns about partial pa
  assert.match(recordsUi,/kind==='值日'&&result&&<DutyAdvisorPanel/);
  assert.match(recordsUi,/kind==='考勤'&&result&&<AttendanceDigestPanel/);
  assert.doesNotMatch(dutyUi+digestUi,/\.insert\(|\.update\(|\.delete\(|\.rpc\(/);
+});
+
+test('Alpha41 whole-class nine-person suggestion exactly matches classroom task split',()=>{
+ const roster=Array.from({length:34},(_,i)=>({id:'p'+i,student_no:String(i+1).padStart(2,'0'),name:'学生'+i}));
+ const planned=planDutyRotation({people:roster,records:[],dutyDate:'2026-12-01',excludedIds:['p0','p1']});
+ assert.equal(DUTY_TASKS.length,9);
+ assert.equal(planned.assignments.length,9);
+ assert.equal(new Set(planned.assignments.map(x=>x.student_id)).size,9);
+ assert.equal(planned.assignments.filter(x=>x.area==='拖地').length,3);
+ assert.equal(planned.assignments.filter(x=>x.area==='扫地').length,4);
+ assert.equal(planned.assignments.filter(x=>x.area.includes('擦黑板')).length,1);
+ assert.equal(planned.assignments.filter(x=>x.area==='排桌子').length,1);
+ assert.ok(planned.assignments.every(x=>x.student_id!=='p0'&&x.student_id!=='p1'));
+});
+test('Alpha41 rejects invalid dates and incomplete duty plans without silent assignments',()=>{
+ const result=planDutyRotation({people:people.slice(0,6),records:[],dutyDate:'2026-12-01'});
+ assert.equal(result.assignments.length,0);
+ assert.equal(result.missing,3);
+ assert.throws(()=>planDutyRotation({people,records:[],dutyDate:'2026-02-30'}));
+});
+test('Alpha41 full-duty preview does not select students already assigned that date',()=>{
+ const roster=Array.from({length:18},(_,i)=>({id:'x'+i,student_no:String(i+1).padStart(2,'0'),name:'学生'+i}));
+ const result=planDutyRotation({people:roster,records:[{student_id:'x0',duty_date:'2026-12-01',area:'扫地'}],dutyDate:'2026-12-01'});
+ assert.ok(result.assignments.every(x=>x.student_id!=='x0'));
+ assert.ok(result.assignments.length===9);
+ const ui=readFileSync(new URL('../src/components/DutyAdvisorPanel.tsx',import.meta.url),'utf8');
+ assert.match(ui,/planDutyRotation/);
+ assert.match(ui,/不会修改任何值日安排/);
 });
