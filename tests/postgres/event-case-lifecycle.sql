@@ -34,6 +34,23 @@ begin
  perform public.v7_transition_event_case(v,'assign','33333333-3333-4333-8333-333333333333','');
  select count(*) into n from public.v7_event_cases where id=v and status='处理中';
  if n<>1 then raise exception 'owner assignment failed';end if;
+ begin
+  perform public.v7_transition_event_case(v,'assign','33333333-3333-4333-8333-333333333333','重复分派');
+  raise exception 'identical assignment unexpectedly allowed';
+ exception when check_violation then null;end;
+ begin
+  perform public.v7_transition_event_case(v,'assign','66666666-6666-4666-8666-666666666666','');
+  raise exception 'reassignment without reason unexpectedly allowed';
+ exception when check_violation then null;end;
+ perform public.v7_transition_event_case(v,'assign','66666666-6666-4666-8666-666666666666','实训任务调整，转派协作干部');
+ select count(*) into n from public.v7_event_case_history where case_id=v
+   and action='转派' and previous_assignee='33333333-3333-4333-8333-333333333333'
+   and next_assignee='66666666-6666-4666-8666-666666666666'
+   and note='实训任务调整，转派协作干部';
+ if n<>1 then raise exception 'assignee transfer not written to history';end if;
+ perform public.v7_transition_event_case(v,'assign','33333333-3333-4333-8333-333333333333','后续统一由班长跟进');
+ select count(*) into n from public.v7_event_case_history where case_id=v and action='转派';
+ if n<>2 then raise exception 'transfer history incomplete';end if;
 end$$;
 commit;
 
@@ -60,7 +77,7 @@ begin
  exception when insufficient_privilege then null;end;
  perform public.v7_transition_event_case(v,'reply',null,'模拟核实并完成教育谈话');
  select count(*) into n from public.v7_event_case_history where case_id=v;
- if n<>3 then raise exception 'event action history missing (create,assign,reply)';end if;
+ if n<>5 then raise exception 'event action history missing (create,assign,two transfers,reply)';end if;
 end$$;
 commit;
 
@@ -117,7 +134,7 @@ begin
  select count(*) into n from public.v7_event_cases where id=v and status='处理中' and closed_at is null;
  if n<>1 then raise exception 'reopen did not clear completion';end if;
  select count(*) into n from public.v7_event_case_history where case_id=v;
- if n<>5 then raise exception 'event history expected 5, got %',n;end if;
+ if n<>7 then raise exception 'event history expected 7 including transfers, got %',n;end if;
 end$$;
 commit;
 
