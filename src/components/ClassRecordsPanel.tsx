@@ -5,11 +5,13 @@ type PageData={items:Record<string,unknown>[];count:number|null;page:number;page
 type Load=(kind:string,page:number,size:number)=>Promise<PageData>;
 export function ClassRecordsPanel({load}:{load:Load}){
  const [kind,setKind]=useState('考勤'),[page,setPage]=useState(1),[pageSize,setPageSize]=useState(10);
- const [result,setResult]=useState<PageData|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[revision,setRevision]=useState(0);
+ const [snapshot,setSnapshot]=useState<{key:string;data:PageData}|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[revision,setRevision]=useState(0);
+ const queryKey=`${kind}:${page}:${pageSize}:${revision}`;
+ const result=snapshot?.key===queryKey?snapshot.data:null;
  const seq=useRef(0);
  useEffect(()=>{
-  const current=++seq.current;setBusy(true);setError('');setResult(null);
-  load(kind,page,pageSize).then(data=>{if(seq.current===current)setResult(data)})
+  const current=++seq.current;setBusy(true);setError('');setSnapshot(null);
+  load(kind,page,pageSize).then(data=>{if(seq.current===current)setSnapshot({key:queryKey,data})})
    .catch(()=>{if(seq.current===current)setError('当前记录读取失败或授权已失效，请检查权限后重试。')})
    .finally(()=>{if(seq.current===current)setBusy(false)});
   return ()=>{seq.current++};
