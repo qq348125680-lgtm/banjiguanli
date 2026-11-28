@@ -3,6 +3,7 @@ import {createClient} from '@supabase/supabase-js';
 import {validateStagingReadOnlyTarget} from '../src/lib/staging-target-guard.mjs';
 import {createReadOnlyBridge} from '../src/lib/supabase-readonly-adapter.mjs';
 import {createSafeWorkflow} from '../src/lib/safe-workflow.mjs';
+import {assertRestrictedRead,assertOwnedSubmissionRows,requireForeignSyntheticFixture,assertNoForeignRows} from '../src/lib/staging-access-assertions.mjs';
 
 // Deliberately no INSERT, UPDATE, DELETE, UPSERT or audit writes.
 // Never log account credentials, tokens, student names or private rows.
@@ -71,6 +72,31 @@ try{
  assert.ok(Array.isArray(ownRecords.items)&&Array.isArray(cadreRecords.items),'业务记录读取失败');
  assert.ok(cadreRecords.items.every(r=>r.class_id===config.classId),'干部记录越过了班级范围');
  console.log('PASS: 班主任与班干部可在授权范围安全读取申请记录');
+ // Negative checks must query exposed tables directly, not only client helpers
+ // that add their own filters. Otherwise a missing RLS policy would go unseen.
+ const negativeReads=await Promise.all([
+  cadre.from('students').select('id,class_id').eq('class_id',config.classId).limit(100),
+  cadre.from('students').select('id,class_id').eq('class_id',config.otherClassId).limit(100),
+  outsider.from('students').select('id,class_id').eq('class_id',config.classId).limit(100),
+  anon.from('students').select('id,class_id').eq('class_id',config.classId).limit(100),
+  cadre.from('class_delegates').select('id,class_id').eq('class_id',config.otherClassId).limit(100),
+  outsider.from('cadre_submissions').select('id,class_id').eq('class_id',config.classId).limit(100),
+  anon.from('cadre_submissions').select('id,class_id').eq('class_id',config.classId).limit(100)
+ ]);
+ const negativeLabels=['干部直接读取A班学生','干部读取B班学生','无关账号读取A班学生','匿名读取A班学生','干部读取B班干部','无关账号读取A班申请','匿名读取A班申请'];
+ negativeReads.forEach((result,index)=>assertRestrictedRead(result,negativeLabels[index]));
+ console.log('PASS: 直接对七条高风险 RLS 路径执行反向查询，未发现不应访问的记录');
+ // A nonempty foreign submission is mandatory: testing only an empty table
+ // cannot prove owner/delegate row isolation.
+ const [ownerDirect,cadreDirect]=await Promise.all([
+  owner.from('cadre_submissions').select('id,class_id,submitted_by').eq('class_id',config.classId).limit(100),
+  cadre.from('cadre_submissions').select('id,class_id,submitted_by').eq('class_id',config.classId).limit(100)
+ ]);
+ if(ownerDirect.error||!Array.isArray(ownerDirect.data))throw Error('班主任无法读取隔离测试申请样本');
+ const foreignIds=requireForeignSyntheticFixture(ownerDirect.data,ids[1],config.classId);
+ assertOwnedSubmissionRows(cadreDirect,ids[1],config.classId);
+ assertNoForeignRows(cadreDirect.data,foreignIds);
+ console.log('PASS: 利用另一测试账号的虚构申请，证明班干部无法越权读取他人的记录');
  console.log('STAGING READ-ONLY ACCEPTANCE PASS. No business writes executed.');
 }finally{
  await Promise.allSettled(clients.map(c=>c.auth.signOut()));
