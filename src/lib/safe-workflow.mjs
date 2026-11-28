@@ -10,6 +10,10 @@ export function createSafeWorkflow(client) {
     if(!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(`${date}T00:00:00Z`)) || new Date(`${date}T00:00:00Z`).toISOString().slice(0,10)!==date)throw Error('日期不合法');
     if(!allowedAttendance.includes(status))throw Error('考勤状态不合法');
     if(typeof note!=='string'||note.length>500)throw Error('说明不能超过500字');
+    // Recheck live class membership before every submission, not just a stale UI roster.
+    // The database trigger in the STAGING-only migration enforces this independently.
+    const currentRoster=await roster(classId);
+    if(!Array.isArray(currentRoster)||!currentRoster.some(s=>s.student_id===studentId))throw Error('当前学生已不在授权班级花名册中，请重新验证权限');
     const {data,error}=await client.from('cadre_submissions').insert({
       class_id:classId,student_id:studentId,submitted_by:u.id,entry_type:'考勤',occurred_on:date,
       details:{status,note},status:'待审核'
