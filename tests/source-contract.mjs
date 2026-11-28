@@ -107,3 +107,12 @@ assert.match(stageYml,/tags:\s*\n\s+- 'v7-staging-check-\*'/);
 assert.doesNotMatch(stageYml,/\\n    branches:/);
 assert.match(stageYml,/environment: v7-staging/);
 console.log('Alpha47 follow-up refresh and staged Auth/RLS safety: source assertions PASS');
+
+// Staging Auth regression: real negative table queries, not merely filtered UI reads.
+const stagedAccess=fs.readFileSync(new URL('../src/lib/staging-access-assertions.mjs',import.meta.url),'utf8');
+assert.match(stage,/assertRestrictedRead\(result,negativeLabels\[index\]\)/);
+assert.match(stage,/requireForeignSyntheticFixture\(ownerDirect\.data,ids\[1\],config\.classId\)/);
+assert.match(stage,/assertOwnedSubmissionRows\(cadreDirect,ids\[1\],config\.classId\)/);
+assert.match(stagedAccess,/result\.data\.length!==0/);
+assert.match(stagedAccess,/String\(result\.error\.code\)==='42501'/);
+console.log('Staging direct RLS negative controls: 5 source assertions PASS');
