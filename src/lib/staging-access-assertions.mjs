@@ -29,3 +29,12 @@ export function assertNoForeignRows(cadreRows,foreignIds){
  if(cadreRows.some(row=>foreignIds.has(row?.id)))throw Error('检测到跨干部泄露了另一账号的申请记录');
  return true;
 }
+
+export function assertOwnerActiveStudents(result,classId){
+ if(result?.error||!Array.isArray(result?.data))throw Error('测试班主任无法直接读取本班学生记录，学生模块尚不可用');
+ if(result.data.length<2)throw Error('测试班应至少有两名可见的虚构在读学生，不能用空表通过权限验收');
+ for(const row of result.data){
+  if(row?.class_id!==classId||!row?.id||row.archived_at!==null)throw Error('班主任的在读学生读取结果超出预期班级或包含归档数据');
+ }
+ return result.data.length;
+}
