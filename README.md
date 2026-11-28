@@ -8,7 +8,7 @@
 - GitHub Actions：Node 测试、TypeScript 严格检查、Vite 生产构建、产物/密钥扫描及 HTTP 预览冒烟测试
 - GitHub Pages 公网技术预览：https://qq348125680-lgtm.github.io/banjiguanli/
 - Alpha 47 最新已验证 **234/234 项 Node 测试、TypeScript 严格检查、Vite 构建及 HTTP 冒烟测试**（[构建记录](https://github.com/qq348125680-lgtm/banjiguanli/actions/runs/46126945674)）；最终版本标识更新后的 CI 以最新 Actions 为准。
-- 独立 **PostgreSQL 17 真实迁移、RLS、并发事务和回滚测试通过**（[隔离数据库运行记录](https://github.com/qq348125680-lgtm/banjiguanli/actions/runs/46126945622)）。该测试只使用虚构数据，不能代替 Supabase Auth/真实两账号/备份恢复联调。
+- 独立 **PostgreSQL 17 真实迁移、RLS、跨干部防重、并发事务、SQL 回滚和虚构数据 pg_dump/pg_restore 恢复演练全部通过**（[隔离数据库运行记录](https://github.com/qq348125680-lgtm/banjiguanli/actions/runs/46127146493)）。这不能替代 Supabase Auth、实际两账号和正式库备份恢复联调。
 - 最新 Alpha 47 Pages 部署可在 Actions 中独立核对：[安全预览工作流](https://github.com/qq348125680-lgtm/banjiguanli/actions/workflows/pages-safe-preview.yml)
 
 公开技术预览故意使用空数据库配置并关闭业务写入：**不提供真实登录、学生数据或考勤操作。** 首页新增「查看各模块界面布局（无数据）」入口，可在手机与电脑上体验六个模块导航、空数据状态和响应式布局；不包含真实或虚构学生记录，也不调用 Supabase。
@@ -62,6 +62,7 @@ Alpha 47 将隔离迁移的 `v7_pending_student_day_unique` 索引限定为**同
 - 真实执行 `sql/alpha45_STAGING_ONLY_SAFE_MIGRATION.sql`，验证花名册权限、跨班级/归档学生写入拒绝、待审核考勤唯一索引、同日两条请假不被误拦截。
 - 并发运行两个独立 PostgreSQL 会话审批同一申请，验证只有一个提交成功；批准、驳回、空缺考勤状态及非法类别均有实际数据库断言。
 - 执行 `sql/alpha45_STAGING_ONLY_ROLLBACK.sql`，确认新增 RPC、索引、触发器消失且考勤和请假测试记录仍在。
+- 运行 `tests/postgres/backup-restore.sh`，备份仅含虚构数据的数据库，主动删除一条测试考勤，再恢复到新的隔离库并核对数量、关联和 RLS 完整性。
 - 禁用干部不能读历史申请也不能提交；匿名角色不能调用 V7 花名册 RPC；测试 RLS 条件与当前生产库的核心策略对齐。
 - **不连接任何 Supabase 项目、无真实学生信息、无生产密钥。** 这只能证明在隔离 PostgreSQL 中 SQL 能工作，不是 Supabase Auth、真实登录、数据迁移或完整备份恢复的上线通过证明。
 
