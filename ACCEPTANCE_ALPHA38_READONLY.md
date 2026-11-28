@@ -17,6 +17,15 @@ Metadata inspection also found:
 
 Therefore **cadre roster and review are not ready for production**, notwithstanding CI/build success.
 
+### Additional Supabase security advisor findings
+
+The current project security advisor reports:
+- **19** anonymous-role executable `SECURITY DEFINER` function findings ([Supabase explanation](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable)).
+- **33** authenticated-role executable `SECURITY DEFINER` function findings ([Supabase explanation](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable)).
+- Leaked-password protection warning ([Supabase configuration guidance](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)).
+
+These are **advisory findings, not proof of exploitation**. Some functions may be trigger-only or designed for specific callers; review each function signature, grants and call chain before remediation. Do **not** blindly revoke privileges on the live application because existing attendance, audit and notification workflows may depend on these functions.
+
 ### Release blockers
 
 1. Validate SELECT paths using two isolated test identities (class owner, enabled delegate), including unrelated class and revoked delegate; never use service_role keys in a browser.
