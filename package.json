@@ -13,7 +13,8 @@
     "verify:dist": "node scripts/verify-dist.mjs",
     "smoke:preview": "node scripts/smoke-preview.mjs",
     "release:status": "node scripts/release-gate.mjs --status",
-    "release:gate": "node scripts/release-gate.mjs --require-ready"
+    "release:gate": "node scripts/release-gate.mjs --require-ready",
+    "staging:readonly": "node scripts/staging-readonly-check.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.57.0",
