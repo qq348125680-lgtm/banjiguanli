@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {dossierPage} from '../src/lib/dossier-pagination.mjs';
+import fs from 'node:fs';
+const rows=Array.from({length:20},(_,i)=>({id:i+1}));
+test('five rows per page and no dropped last rows',()=>{assert.deepEqual(dossierPage(rows,1,5).items.map(x=>x.id),[1,2,3,4,5]);assert.deepEqual(dossierPage(rows,4,5).items.map(x=>x.id),[16,17,18,19,20]);});
+test('supports 5,10,20 and clamps page',()=>{assert.equal(dossierPage(rows,99,10).page,2);assert.equal(dossierPage(rows,1,20).items.length,20)});
+test('empty records stable',()=>{const p=dossierPage([],2,5);assert.equal(p.page,1);assert.equal(p.pages,1);});
+test('reject invalid pagination',()=>{for(const input of [[rows,0,5],[rows,1,9],[{},1,5]])assert.throws(()=>dossierPage(...input));});
+test('20-row cap must be labelled as possibly more on server',()=>{assert.equal(dossierPage(rows).hasMoreOnServer,true);assert.equal(dossierPage(rows.slice(0,19)).hasMoreOnServer,false)});
+test('cross-scope review notes are cleared',()=>{const app=fs.readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');assert.match(app,/setReviewNotes\(\{\}\)/);});
+test('per-category pager and error state present',()=>{const panel=fs.readFileSync(new URL('../src/components/StudentDossierPanel.tsx',import.meta.url),'utf8');assert.match(panel,/fetchPage/);assert.match(panel,/error&&/);assert.match(panel,/下一页/);});

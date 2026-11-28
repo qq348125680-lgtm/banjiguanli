@@ -1,0 +1,19 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
+import {mkdtempSync,writeFileSync,mkdirSync,rmSync} from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+const root=path.resolve(import.meta.dirname,'..');
+test('dist gate rejects missing build outputs',()=>{
+ const dir=mkdtempSync(path.join(os.tmpdir(),'v7-dist-'));
+ try{const r=spawnSync(process.execPath,['scripts/verify-dist.mjs'],{cwd:root,env:{...process.env,V7_DIST_DIR:dir},encoding:'utf8'});assert.notEqual(r.status,0)}finally{rmSync(dir,{recursive:true,force:true})}
+});
+test('dist gate accepts complete emitted assets',()=>{
+ const dir=mkdtempSync(path.join(os.tmpdir(),'v7-dist-'));
+ try{mkdirSync(path.join(dir,'assets'));writeFileSync(path.join(dir,'index.html'),'<html><script type="module" src="/assets/main.js"></script></html>');writeFileSync(path.join(dir,'assets','main.js'),'console.log(1)');const r=spawnSync(process.execPath,['scripts/verify-dist.mjs'],{cwd:root,env:{...process.env,V7_DIST_DIR:dir},encoding:'utf8'});assert.equal(r.status,0,r.stderr)}finally{rmSync(dir,{recursive:true,force:true})}
+});
+test('dist gate rejects missing referenced asset',()=>{
+ const dir=mkdtempSync(path.join(os.tmpdir(),'v7-dist-'));
+ try{writeFileSync(path.join(dir,'index.html'),'<html><script src="/assets/main.js"></script></html>');const r=spawnSync(process.execPath,['scripts/verify-dist.mjs'],{cwd:root,env:{...process.env,V7_DIST_DIR:dir},encoding:'utf8'});assert.notEqual(r.status,0)}finally{rmSync(dir,{recursive:true,force:true})}
+});

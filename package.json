@@ -1,0 +1,29 @@
+{
+  "name": "smart-class-v7-build-gate",
+  "version": "7.0.35-alpha",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "node --test tests/*.test.mjs",
+    "verify:source": "node tests/source-contract.mjs",
+    "preflight:offline": "node scripts/offline-preflight.mjs",
+    "verify:dist": "node scripts/verify-dist.mjs",
+    "smoke:preview": "node scripts/smoke-preview.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.57.0",
+    "lucide-react": "0.468.0",
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.11",
+    "@types/react-dom": "19.1.7",
+    "@vitejs/plugin-react": "4.7.0",
+    "typescript": "5.9.2",
+    "vite": "6.3.5"
+  }
+}

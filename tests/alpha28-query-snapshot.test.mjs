@@ -1,0 +1,13 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {decideQuerySnapshot} from '../src/lib/query-snapshot.mjs';
+const base=['u1','c1','owner',1,10,'全部'];
+test('first query clears unknown rows',()=>assert.equal(decideQuerySnapshot('',base).clear,true));
+test('same query refresh preserves rows',()=>{const first=decideQuerySnapshot('',base);assert.equal(decideQuerySnapshot(first.key,base).clear,false)});
+test('page change clears prior records',()=>{const first=decideQuerySnapshot('',base);assert.equal(decideQuerySnapshot(first.key,['u1','c1','owner',2,10,'全部']).clear,true)});
+test('filter change clears prior records',()=>{const first=decideQuerySnapshot('',base);assert.equal(decideQuerySnapshot(first.key,['u1','c1','owner',1,10,'待审核']).clear,true)});
+test('page size change clears prior records',()=>{const first=decideQuerySnapshot('',base);assert.equal(decideQuerySnapshot(first.key,['u1','c1','owner',1,20,'全部']).clear,true)});
+test('account/class/role isolation',()=>{const first=decideQuerySnapshot('',base);for(const next of [['u2','c1','owner',1,10,'全部'],['u1','c2','owner',1,10,'全部'],['u1','c1','delegate',1,10,'全部']])assert.equal(decideQuerySnapshot(first.key,next).clear,true)});
+test('missing query scope invalidates',()=>assert.deepEqual(decideQuerySnapshot('x',['u1','']),{key:'',clear:true}));
+test('separate review and audit snapshots are maintained in the React entrypoint',()=>{const src=fs.readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');assert.match(src,/reviewQueryRef\.current=reviewSnapshot\.key/);assert.match(src,/auditQueryRef\.current=auditSnapshot\.key/);assert.match(src,/if\(reviewSnapshot\.clear\)\{setItems\(\[\]\);setTotal\(null\);\}/);assert.match(src,/if\(auditSnapshot\.clear\)\{setAudits\(\[\]\);setAuditTotal\(null\);\}/)});
