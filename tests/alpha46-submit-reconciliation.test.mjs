@@ -85,3 +85,35 @@ test('Alpha46 successful write response remains successful and known validation 
   assert.equal(uncertainWriteOutcome(err),false);return true;
  });
 });
+
+test('Alpha46 teacher review readback checks exact row and remains read-only',async()=>{
+ const calls=[];
+ const client={
+  auth:{getUser:async()=>({data:{user:{id:uid}},error:null})},
+  rpc:async()=>({data:{},error:null}),
+  from(table){
+   const filters=[];
+   const q={
+    select(cols){filters.push(['select',cols]);return q},
+    eq(k,v){filters.push(['eq',k,v]);return q},
+    async maybeSingle(){calls.push({table,filters});return {data:{id:sid,class_id:cid,status:'已通过',reviewed_at:'2026-11-28T00:00:00Z'},error:null}}
+   };
+   return q;
+  }
+ };
+ const result=await createSafeWorkflow(client).verifyReview({classId:cid,submissionId:sid});
+ assert.equal(result.status,'已通过');
+ assert.equal(calls.length,1);assert.equal(calls[0].table,'cadre_submissions');
+ assert.ok(calls[0].filters.some(([op,k,v])=>op==='eq'&&k==='class_id'&&v===cid));
+ assert.ok(calls[0].filters.some(([op,k,v])=>op==='eq'&&k==='id'&&v===sid));
+});
+test('Alpha46 teacher review prevents repeated approval after ambiguous network result',()=>{
+ const app=readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');
+ const ui=readFileSync(new URL('../src/components/ReviewPanel.tsx',import.meta.url),'utf8');
+ assert.match(app,/async function reconcileUncertainReview\(/);
+ assert.match(app,/setUncertainReview\(\{accountId:account,classId:submittedClass,id\}\)/);
+ assert.match(app,/await withUncertainWriteDeadline\(\(\)=>bridges.writer.review/);
+ assert.match(app,/record.status==='已通过'\|\|record.status==='已驳回'/);
+ assert.match(ui,/uncertainReviewId===i.id/);
+ assert.match(ui,/核对审核结果/);
+});
