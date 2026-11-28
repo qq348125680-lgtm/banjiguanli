@@ -58,6 +58,8 @@ assert.match(client,/configured&&workflowWritesRequested&&writeGateAcknowledged/
 const pagesWorkflow=fs.readFileSync(new URL('../.github/workflows/pages-safe-preview.yml',import.meta.url),'utf8');
 assert.match(pagesWorkflow,/VITE_ENABLE_WORKFLOW_WRITES: 'false'/);
 assert.match(pagesWorkflow,/VITE_V7_WRITE_GATE_ACKNOWLEDGED: 'false'/);
+assert.match(pagesWorkflow,/npm run verify:source/);
+assert.match(pagesWorkflow,/npm run preflight:offline/);
 console.log('Alpha47 double write gate and public preview guard: 4 assertions PASS');
 
 
