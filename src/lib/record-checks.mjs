@@ -1,3 +1,4 @@
+import {escapeCsvCell} from './class-records.mjs';
 /** Non-authoritative, current-page quality checklist; never changes persisted status. */
 export function pendingRecordChecks(kind,records){
  const result=[];
@@ -16,7 +17,19 @@ export function pendingRecordChecks(kind,records){
   }else if(kind==='违纪'){
    if(!String(record.category??'').trim())reason.push('违纪类别未填写');
   }
-  if(reason.length)result.push({id,student_id:String(record.student_id??''),reason});
+  if(reason.length)result.push({id,student_id:String(record.student_id??''),date:String(record.on_date??record.start_on??record.duty_date??record.happened_on??''),reason});
  }
  return result;
+}
+
+/** Exports only the current page of low-sensitivity follow-up items.
+ * Family contact content, phone numbers and historic snapshots are never included.
+ */
+export function exportRecordChecksCsv(kind,checks,students){
+ if(!['考勤','请假','值日','违纪'].includes(kind))throw Error('该类别不能导出异常核对清单');
+ if(!Array.isArray(checks)||checks.length>20)throw Error('仅能导出当前页最多20条待核对事项');
+ const nameMap=new Map((students??[]).map(s=>[s.id,s.name]));
+ const rows=[['学生姓名','日期','待核对事项','处理状态']];
+ for(const item of checks)rows.push([nameMap.get(item.student_id)??'学生（无法关联）',item.date??'',item.reason.join('；'),'待人工核实']);
+ return '\uFEFF'+rows.map(r=>r.map(escapeCsvCell).join(',')).join('\r\n')+'\r\n';
 }
