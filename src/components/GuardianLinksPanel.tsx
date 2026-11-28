@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {withReadDeadline} from '../lib/read-deadline.mjs';
-import {GUARDIAN_RELATIONS,GUARDIAN_STATUSES,maskGuardianPhone} from '../lib/guardian-links-api.mjs';
+import {GUARDIAN_RELATIONS,GUARDIAN_STATUSES,maskGuardianPhone,validateGuardianInput} from '../lib/guardian-links-api.mjs';
 import type {StudentItem} from '../lib/bridge';
 
 type GuardianRow={id:string;class_id:string;student_id:string;contact_name:string;relation:string;contact_phone:string;verification_status:string;verified_at:string|null;created_at:string;updated_at:string};
@@ -34,11 +34,14 @@ export function GuardianLinksPanel({api,classId,students,canWrite,initialStudent
    .finally(()=>{if(current.current===seq)setLoading(false)});
   return ()=>{current.current++};
  },[api,classId,page,filterStudent,filterStatus,revision]);
- const create=async()=>{
-  if(lock.current||!canWrite||!studentId||contactName.trim().length<2||phone.trim().length<7||uncertain)return;
+ const create=async(retry=false)=>{
+  if(lock.current||!canWrite||!studentId||contactName.trim().length<2||phone.trim().length<7||(uncertain&&!retry))return;
+  const input={classId,studentId,name:contactName,relation,phone,requestKey};
+  try{validateGuardianInput(input)}
+  catch(e){setProblem(e instanceof Error?e.message:'联系人资料不合法，请检查后重新填写');return}
   lock.current=true;setBusyId('create');setProblem('');setFeedback('');
   try{
-   const id=await api.create({classId,studentId,name:contactName,relation,phone,requestKey});
+   const id=await api.create(input);
    resetDraft();setFeedback('联系人关系已登记为“待核实”，编号 '+id.slice(0,8)+'…。确认身份后方可标记已核实。');
    setPage(1);setFilterStatus('全部');setRevision(v=>v+1);
   }catch(e){
@@ -88,7 +91,7 @@ export function GuardianLinksPanel({api,classId,students,canWrite,initialStudent
     <label>联系电话<input required type="tel" maxLength={25} minLength={7} disabled={Boolean(busyId)||uncertain} value={phone} onChange={e=>setPhone(e.target.value)} placeholder="用于后续联系，避免复制无关号码"/></label>
    </div>
    <div className="case-create-actions"><button type="submit" className="button" disabled={Boolean(busyId)||uncertain||!studentId||contactName.trim().length<2||phone.trim().length<7}>登记为待核实</button>
-   {uncertain&&<button type="button" className="button secondary" disabled={Boolean(busyId)} onClick={()=>void verify()}>核对上次请求</button>}</div>
+   {uncertain&&<><button type="button" className="button secondary" disabled={Boolean(busyId)} onClick={()=>void verify()}>核对上次请求</button><button type="button" className="button secondary" disabled={Boolean(busyId)} onClick={()=>void create(true)}>使用原编号重试</button></>}</div>
   </form>}
   {!canWrite&&<p className="notice">当前写入未启用：仅查询已有的授权联系人关系，不能修改核实状态。</p>}
   <div className="guardian-filter">
