@@ -4,6 +4,7 @@
 -- business transactions were used in staging, discard/reset the staging project.
 -- DO NOT EXECUTE AGAINST PRODUCTION.
 begin;
+drop index if exists public.v7_pending_student_day_unique;
 drop function if exists public.v7_review_attendance(uuid,text,text);
 drop function if exists public.v7_cadre_roster(uuid);
 drop trigger if exists trg_v7_cadre_student_scope on public.cadre_submissions;
