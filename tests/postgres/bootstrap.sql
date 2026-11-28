@@ -29,6 +29,7 @@ create table public.class_delegates(
  id uuid primary key default gen_random_uuid(),
  class_id uuid not null references public.classes(id),
  user_id uuid not null,
+ student_id uuid references public.students(id),
  duty text not null default '班干部',
  enabled boolean not null default true
 );
@@ -97,10 +98,10 @@ insert into public.students(id,class_id,student_no,name,archived_at) values
  ('aaaaaaaa-0000-4000-8000-000000000002','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','02','乙同学',null),
  ('aaaaaaaa-0000-4000-8000-000000000003','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','03','归档样本',now()),
  ('bbbbbbbb-0000-4000-8000-000000000001','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','01','B班样本',null);
-insert into public.class_delegates(class_id,user_id,duty,enabled) values
- ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','33333333-3333-4333-8333-333333333333','班长',true),
- ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','44444444-4444-4444-8444-444444444444','禁用干部',false),
- ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','66666666-6666-4666-8666-666666666666','协作干部',true);
+insert into public.class_delegates(class_id,user_id,student_id,duty,enabled) values
+ ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','33333333-3333-4333-8333-333333333333','aaaaaaaa-0000-4000-8000-000000000001','班长',true),
+ ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','44444444-4444-4444-8444-444444444444',null,'禁用干部',false),
+ ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','66666666-6666-4666-8666-666666666666','aaaaaaaa-0000-4000-8000-000000000002','协作干部',true);
 
 -- A synthetic historical record from a now-disabled actor: must remain invisible to that actor.
 insert into public.cadre_submissions(id,class_id,student_id,submitted_by,entry_type,occurred_on,details,status)
