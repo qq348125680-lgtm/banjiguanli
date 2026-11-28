@@ -8,8 +8,8 @@ import {RecordChecksPanel} from './RecordChecksPanel';
 type Filters={studentId?:string;startOn?:string;endOn?:string};
 type PageData={items:Record<string,unknown>[];count:number|null;page:number;pageSize:number;students:StudentItem[]};
 type Load=(kind:string,page:number,size:number,filters:Filters)=>Promise<PageData>;
-export function ClassRecordsPanel({load}:{load:Load}){
- const [kind,setKind]=useState('考勤'),[page,setPage]=useState(1),[pageSize,setPageSize]=useState(10);
+export function ClassRecordsPanel({load,initialKind='考勤'}:{load:Load;initialKind?:string}){
+ const [kind,setKind]=useState(CLASS_RECORD_KINDS.includes(initialKind)?initialKind:'考勤'),[page,setPage]=useState(1),[pageSize,setPageSize]=useState(10);
  const [studentId,setStudentId]=useState(''),[startOn,setStartOn]=useState(''),[endOn,setEndOn]=useState('');
  const [roster,setRoster]=useState<StudentItem[]>([]);
  const [snapshot,setSnapshot]=useState<{key:string;data:PageData}|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[revision,setRevision]=useState(0);
