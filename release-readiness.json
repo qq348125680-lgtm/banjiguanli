@@ -39,7 +39,7 @@
       "id": "auth_rls",
       "name": "班主任与班干部真实测试账号登录、停用及跨班权限",
       "status": "not_tested",
-      "reason": "尚未在独立 Supabase 环境完成真实 JWT/RLS 双账号验收",
+      "reason": "已备齐只读的三账号 Supabase Auth/RLS 验收工具；尚无独立测试项目及实际验收记录，不能标记通过",
       "evidence": []
     },
     {
