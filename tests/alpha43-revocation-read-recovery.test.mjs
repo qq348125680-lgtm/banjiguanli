@@ -13,7 +13,7 @@ test('Alpha43 bounded read distinguishes stalled network from legitimate zero re
 });
 test('Alpha43 read failure propagates without fabricating an empty success',async()=>{
  await assert.rejects(()=>withReadDeadline(async()=>{throw Error('access denied')},100),/access denied/);
- assert.throws(()=>withReadDeadline(()=>Promise.resolve([]),0),/读取超时参数不合法/);
+ await assert.rejects(()=>withReadDeadline(()=>Promise.resolve([]),0),/读取超时参数不合法/);
 });
 test('Alpha43 revoked class authorization unmounts all sensitive child modules',()=>{
  const app=readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');
