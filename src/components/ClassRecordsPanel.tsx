@@ -15,7 +15,7 @@ export function ClassRecordsPanel({load}:{load:Load}){
  const result=snapshot?.key===queryKey?snapshot.data:null;
  const seq=useRef(0);
  useEffect(()=>{
-  const current=++seq.current;setBusy(true);setError('');setSnapshot(null);
+  const current=++seq.current;setBusy(true);setError('');setSnapshot(null);setRoster([]);
   load(kind,page,pageSize,{studentId,startOn,endOn}).then(data=>{if(seq.current===current){setSnapshot({key:queryKey,data});setRoster(data.students)}})
    .catch(()=>{if(seq.current===current)setError('当前记录读取失败或授权已失效，请核对日期、学生与读取权限后重试。')})
    .finally(()=>{if(seq.current===current)setBusy(false)});
@@ -35,7 +35,7 @@ export function ClassRecordsPanel({load}:{load:Load}){
   <div className="panel-head"><div><h2>班务记录中心</h2><p>班主任授权只读 · 六类真实记录 · 每页独立查询</p></div><span className="count">只读</span></div>
   <div className="record-tabs" role="group" aria-label="班务分类">{CLASS_RECORD_KINDS.map(item=><button key={item} type="button" aria-pressed={kind===item} className={kind===item?'active':''} onClick={()=>{setKind(item);setPage(1)}}>{item}</button>)}</div>
   <div className="record-filters">
-   <label>学生 <select aria-label="按学生筛选班务记录" value={studentId} onChange={e=>{setStudentId(e.target.value);setPage(1)}}><option value="">全部在读学生</option>{roster.map(st=><option key={st.id} value={st.id}>{st.student_no} · {st.name}</option>)}</select></label>
+   <label>学生 <select aria-label="按学生筛选班务记录" value={studentId} onChange={e=>{setStudentId(e.target.value);setPage(1)}}><option value="">全部在读学生</option>{studentId&&!roster.some(st=>st.id===studentId)&&<option value={studentId} disabled>已选学生（正在复核权限）</option>}{roster.map(st=><option key={st.id} value={st.id}>{st.student_no} · {st.name}</option>)}</select></label>
    <label>开始日期 <input aria-label="记录开始日期" type="date" value={startOn} onChange={e=>{setStartOn(e.target.value);setPage(1)}}/></label>
    <label>结束日期 <input aria-label="记录结束日期" type="date" value={endOn} onChange={e=>{setEndOn(e.target.value);setPage(1)}}/></label>
    <button type="button" className="record-refresh" onClick={()=>{setStudentId('');setStartOn('');setEndOn('');setPage(1)}}>清除筛选</button>
