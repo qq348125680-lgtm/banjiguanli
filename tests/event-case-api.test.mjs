@@ -78,3 +78,24 @@ test('RPC rejects failed server outcomes and invalid mutation outputs',async()=>
  const valid=fake({rpcResult:{id:caseId,status:'处理中'}});
  assert.equal((await valid.api.transition(caseId,'assign',studentId,'')).status,'处理中');
 });
+
+test('assignee choices use verified owner-only RPC, never raw delegates table SELECT',async()=>{
+ const userId='11111111-1111-4111-8111-111111111111';
+ const calls=[];
+ const api=createEventCaseApi({
+  auth:{getUser:async()=>({data:{user:{id:userId}},error:null})},
+  from:()=>{throw Error('assignee list must not directly read tables')},
+  rpc:async(name,params)=>{
+   calls.push({name,params});
+   if(name==='v7_event_case_assignees')return {data:[
+    {user_id:userId,student_id:null,duty:'班主任（本人）',enabled:true},
+    {user_id:'33333333-3333-4333-8333-333333333333',student_id:studentId,duty:'班长',enabled:true},
+    {user_id:'44444444-4444-4444-8444-444444444444',student_id:null,duty:'停用',enabled:false}
+   ],error:null};
+   throw Error('unexpected RPC');
+  }
+ });
+ const people=await api.assignees(classId);
+ assert.deepEqual(people.map(p=>p.duty),['班主任（本人）','班长']);
+ assert.deepEqual(calls,[{name:'v7_event_case_assignees',params:{p_class_id:classId}}]);
+});
