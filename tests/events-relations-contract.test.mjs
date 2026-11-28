@@ -42,3 +42,14 @@ test('context links take a student from event to real identity relation and back
  assert.match(events,/onRelations\(item\.studentId\)/);
  assert.match(relations,/onEvents\(\(item as Student\)\.id\)/);
 });
+
+test('existing event can prefill a student-scoped persistent follow-up case without direct row mutation',()=>{
+ const eventPanel=read('src/components/EventCenterPanel.tsx');
+ const casePanel=read('src/components/EventCaseBoard.tsx');
+ assert.match(eventPanel,/onCreateCase\(item\.studentId,item\.kind,item\.summary\)/);
+ assert.match(app,/function openCaseFromEvent\(studentId:string,kind:string,summary:string\)/);
+ assert.match(app,/setCaseDraft\(\{studentId,kind,title:/);
+ assert.match(app,/initialDraft=\{caseDraft\}/);
+ assert.match(casePanel,/initialDraft\?\.studentId/);
+ assert.doesNotMatch(eventPanel,/\.insert\(|\.update\(|\.delete\(/);
+});
