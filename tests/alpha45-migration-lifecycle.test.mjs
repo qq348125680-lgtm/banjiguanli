@@ -16,7 +16,8 @@ test('Alpha45 staged rollback removes only added interfaces, does not delete bus
  assert.match(s,/drop function if exists public\.v7_review_attendance/);
  assert.match(s,/drop trigger if exists trg_v7_cadre_student_scope/);
  assert.match(s,/drop schema if exists v7_private restrict/);
- assert.doesNotMatch(s,/drop policy|truncate|delete from|drop table|cascade/i);
+ const statements=s.split('\n').filter(line=>line.trim()&&!line.trim().startsWith('--')).join('\n');
+ assert.doesNotMatch(statements,/drop policy|truncate|delete from|drop table|cascade/i);
 });
 test('Alpha45 old Alpha9 policy-dropping migration is no longer executable',()=>{
  const old=sql('alpha9_PROPOSED_NOT_APPLIED.sql');
