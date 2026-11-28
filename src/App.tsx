@@ -28,6 +28,7 @@ import {browserSessionStorage} from './lib/pending-write-marker.mjs';
 import {inspectPendingMarker,listAuthorizedPendingMarkers} from './lib/pending-marker-index.mjs';
 import {RecoveryInbox} from './components/RecoveryInbox';
 import {beginWriteIntent,finishKnownWrite,hasConfirmedAttendance} from './lib/write-intent-guard.mjs';
+import {refreshAfterConfirmedWrite} from './lib/confirmed-write-refresh.mjs';
 
 type View='dashboard'|'students'|'entry'|'review'|'records'|'reports'|'archive';
 const nav:[View,string,typeof LayoutDashboard][]=[['dashboard','工作台',LayoutDashboard],['students','学生中心',Users],['entry','班级事务',ClipboardList],['review','审核中心',ClipboardCheck],['records','班务记录',BookOpen],['reports','数据分析',ShieldCheck],['archive','工作档案',Archive]];
@@ -137,10 +138,10 @@ export default function App(){
  },[user?.id,loadClasses]);
  const loadData=useCallback(async(freshAuthorizedClassIds?:string[])=>{
    const verifiedOverride=Boolean(freshAuthorizedClassIds?.includes(classId));
-   if(authorizationChecking&&!verifiedOverride)return;
-   if(!user||!bridges)return;
+   if(authorizationChecking&&!verifiedOverride)return false;
+   if(!user||!bridges)return false;
    const sequence=++requestSeq.current;
-   if(!canReadAuthorizedScope({hasBridge:Boolean(bridges),hasUser:Boolean(user),classId,authorizedClassIds:freshAuthorizedClassIds??authorizedClassIds,authorizationBlocked,verifiedOverride})){setStudents([]);setRoster([]);setRosterLoaded(false);setItems([]);setPendingCount(null);setAudits([]);setAuditTotal(null);setTotal(null);return;}
+   if(!canReadAuthorizedScope({hasBridge:Boolean(bridges),hasUser:Boolean(user),classId,authorizedClassIds:freshAuthorizedClassIds??authorizedClassIds,authorizationBlocked,verifiedOverride})){setStudents([]);setRoster([]);setRosterLoaded(false);setItems([]);setPendingCount(null);setAudits([]);setAuditTotal(null);setTotal(null);return false;}
    setLoading(true);setProblem('');
    // A new page/filter must not display the previous page's rows or total, even if the query fails.
    const reviewSnapshot=decideQuerySnapshot(reviewQueryRef.current,[user.id,classId,owned?'owner':'delegate',page,pageSize,owned?filter:'全部']);
@@ -158,7 +159,7 @@ export default function App(){
    }
    try {
      const result=await withReadDeadline(()=>loadScopedPanels({owned,view,reader:bridges.reader,writer:bridges.writer,classId,page,pageSize,filter,sanitizeList}));
-     if(sequence!==requestSeq.current)return;
+     if(sequence!==requestSeq.current)return false;
      const recovery=decideReadFailure(result,{owned,view});
      if(recovery.blockClass){
        // RLS revocation or a failed roster refresh must unmount private child snapshots.
@@ -167,7 +168,7 @@ export default function App(){
        setPendingCount(null);setAudits([]);setAuditTotal(null);setDossierId('');
        setSubmittedSession([]);setReviewNotes({});setSelected('');setFeedback('');
        setProblem('学生名单读取失败；已隐藏班级数据并暂停业务操作，请重新验证班级授权。');
-       return;
+       return false;
      }
      if(result.roster.ok){setStudents(result.roster.value);setRoster(result.roster.value);setRosterLoaded(true)}
      if(recovery.clearReviews){setItems([]);setTotal(null)}
@@ -176,7 +177,8 @@ export default function App(){
      else if(result.pending.ok)setPendingCount(result.pending.value);
      if(recovery.clearAudit){setAudits([]);setAuditTotal(null)}
      else if(result.audit.ok){setAudits(result.audit.value?.items??[]);setAuditTotal(result.audit.value?.count??null)}
-     if(recovery.failedNames.length)setProblem(recovery.failedNames.join('、')+'读取失败；已清除失败模块的上次结果，请重新验证权限或稍后重试。');
+     if(recovery.failedNames.length){setProblem(recovery.failedNames.join('、')+'读取失败；已清除失败模块的上次结果，请重新验证权限或稍后重试。');return false;}
+     return true;
    }catch(e){
      if(sequence===requestSeq.current){
        loadedScopeRef.current='';setAuthorizationBlocked(true);
@@ -185,6 +187,7 @@ export default function App(){
        setSubmittedSession([]);setReviewNotes({});setSelected('');setFeedback('');
        setProblem('数据读取异常，已清除旧班级信息并暂停操作，请重新验证授权：'+displayError(e));
      }
+     return false;
    }
    finally{if(sequence===requestSeq.current)setLoading(false)}
  },[bridges,user,classId,owned,page,pageSize,filter,view,authorizationBlocked,authorizationChecking,authorizedClassIds]);
@@ -273,8 +276,11 @@ export default function App(){
     setUncertainSubmit(null);setNote('');setAttendance('出勤');setPage(1);
     setSubmittedSession(prev=>markSubmissionConfirmed(prev,submittedStudent));
     setSelected(nextOutstanding(roster,[...submittedSession,submittedStudent],submittedStudent));
-    await loadData();
-    if(scopeRef.current===operationScope)setFeedback('申请已提交待审核，尚未计入正式考勤。');
+    const refreshed=await refreshAfterConfirmedWrite(()=>loadData());
+    if(scopeRef.current===operationScope){
+     if(refreshed.ok)setFeedback('申请已提交待审核，尚未计入正式考勤。');
+     else setProblem('服务器已确认提交成功，但页面数据尚未刷新完成，请手动重新核对班级权限和记录，切勿重复提交。'+(refreshed.error?' '+displayError(refreshed.error):''));
+    }
    }
   }catch(e){
    const unknown=uncertainWriteOutcome(e);
@@ -330,8 +336,11 @@ export default function App(){
    setRecoveryRevision(v=>v+1);
    if(activeAccountId.current===account&&scopeRef.current.startsWith(`${account}:${submittedClass}:`))setUncertainReview(null);
    if(scopeRef.current===operationScope){
-    await loadData();
-    if(scopeRef.current===operationScope)setFeedback(action==='approve'?'审核已通过，服务端事务已返回结果。':'已驳回，并保留审核原因。');
+    const refreshed=await refreshAfterConfirmedWrite(()=>loadData());
+    if(scopeRef.current===operationScope){
+     if(refreshed.ok)setFeedback(action==='approve'?'审核已通过，服务端事务已返回结果。':'已驳回，并保留审核原因。');
+     else setProblem('服务器已确认审核处理完成，但刷新页面记录失败。不要再次审批；请重新校验授权后查看审核结果。'+(refreshed.error?' '+displayError(refreshed.error):''));
+    }
    }
   }catch(e){
    const unknown=uncertainWriteOutcome(e);
