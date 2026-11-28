@@ -1,6 +1,7 @@
 import {assertUuid} from './supabase-readonly-adapter.mjs';
 import {inboxDefinitions,assertInboxQueryResult,buildInboxSummary} from './event-task-inbox.mjs';
 import {schoolToday,validateSchoolDate,dueReminderDefinitions,verifyDueResponse,verifyWorkloadRows} from './case-deadline-model.mjs';
+import {validateNudgeInput,verifyPendingNudges} from './case-nudge-model.mjs';
 
 export const CASE_KINDS=Object.freeze(['考勤','请假','违纪','积分','值日','家校沟通','其他']);
 export const CASE_STATES=Object.freeze(['待分派','处理中','待复核','已结案']);
@@ -110,6 +111,36 @@ export function createEventCaseApi(client){
    throw Error('处理期限变更没有得到服务器确认');
   return data;
  }
+ /** Persistent, one-per-school-day in-app reminder sent through owner-only RPC. */
+ async function sendNudge(caseId,note){
+  await user();
+  const params=validateNudgeInput(caseId,note);
+  const {data,error}=await client.rpc('v7_send_case_nudge',params);
+  if(error)throw error;
+  if(!data||data.case_id!==caseId||data.status!=='待反馈')throw Error('催办未得到服务器确认，请刷新处理流水核对');
+  assertUuid(data.id);
+  return data;
+ }
+ /** Only current role's outstanding nudges; never conflate with push/unread. */
+ async function pendingNudges(classId){
+  const u=await user();assertUuid(classId);
+  const {data:cls,error:ce}=await client.from('classes')
+   .select('id').eq('id',classId).eq('owner_id',u.id).maybeSingle();
+  if(ce)throw ce;
+  const owned=Boolean(cls);
+  if(!owned){
+   const {data:delegate,error:de}=await client.from('class_delegates')
+    .select('id').eq('class_id',classId).eq('user_id',u.id).eq('enabled',true).maybeSingle();
+   if(de)throw de;
+   if(!delegate)throw Error('干部账号不在当前授权班级，不能读取催办');
+  }
+  let q=client.from('v7_case_nudges')
+   .select('id,case_id,class_id,target_user_id,note,created_at,resolved_at',{count:'exact'})
+   .eq('class_id',classId).is('resolved_at',null);
+  if(!owned)q=q.eq('target_user_id',u.id);
+  const response=await q.order('created_at',{ascending:false}).limit(6);
+  return {...verifyPendingNudges(response,classId,u.id,owned),owned};
+ }
  /** Class owner and current enabled delegate get their own actionable task
   * totals. Every bucket is a separate RLS-scoped database query.
   */
@@ -195,5 +226,5 @@ export function createEventCaseApi(client){
   if(error)throw error;if(!data||data.id!==caseId||!CASE_STATES.includes(data.status))throw Error('工单变更结果未能核实');
   return data;
  }
- return Object.freeze({list,studentSummary,taskInbox,dueDigest,classOverview,setDeadline,sourceLinks,history,assignees,findByRequestKey,create,transition});
+ return Object.freeze({list,studentSummary,taskInbox,dueDigest,classOverview,setDeadline,sendNudge,pendingNudges,sourceLinks,history,assignees,findByRequestKey,create,transition});
 }
