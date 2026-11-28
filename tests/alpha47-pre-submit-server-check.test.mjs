@@ -30,7 +30,7 @@ function harness({existing=[],readError=null,rosterError=null}={}){
  return {api:createSafeWorkflow(client),calls};
 }
 test('Alpha47 existing own attendance request survives UI reload and blocks repeat INSERT',async()=>{
- const o=harness({existing:[{id:'old',student_id:studentId,occurred_on:date,entry_type:'考勤',status:'已驳回'}]});
+ const o=harness({existing:[{id:'old',student_id:studentId,occurred_on:date,entry_type:'考勤',status:'待审核'}]});
  await assert.rejects(()=>o.api.submit(form),error=>{
   assert.equal(error.code,'V7_ALREADY_SUBMITTED');
   assert.match(displayError(error),/已有/);
@@ -47,6 +47,17 @@ test('Alpha47 no existing request allows exactly one real INSERT after roster an
  assert.equal(result.id,'new');
  assert.deepEqual(o.calls.map(x=>x[0]),['roster','read','insert']);
  assert.equal(o.calls[2][2].status,'待审核');
+});
+test('Alpha47 clearly rejected attendance may be corrected and resubmitted',async()=>{
+ const o=harness({existing:[{id:'old',student_id:studentId,occurred_on:date,entry_type:'考勤',status:'已驳回'}]});
+ const reply=await o.api.submit(form);
+ assert.equal(reply.id,'new');
+ assert.deepEqual(o.calls.map(x=>x[0]),['roster','read','insert']);
+});
+test('Alpha47 approved attendance cannot be re-submitted even after reload',async()=>{
+ const o=harness({existing:[{id:'posted',student_id:studentId,occurred_on:date,entry_type:'考勤',status:'已通过'}]});
+ await assert.rejects(()=>o.api.submit(form),error=>error.code==='V7_ALREADY_SUBMITTED');
+ assert.equal(o.calls.some(x=>x[0]==='insert'),false);
 });
 test('Alpha47 history read error stops before write with definitive preflight status',async()=>{
  const o=harness({readError:{code:'PGRST301',message:'read unavailable'}});
