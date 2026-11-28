@@ -47,7 +47,9 @@ test('Alpha41 points rule UI is owner-only and never writes to production',()=>{
  const read=p=>readFileSync(new URL(p,import.meta.url),'utf8');
  const app=read('../src/App.tsx');
  const panel=read('../src/components/PointRulesPanel.tsx');
- assert.match(app,/owned\?<><div className="student-center-tabs"/);
+ assert.match(app,/view==='records'&&\(!owned\?<EventCenterPanel/);
+ assert.match(app,/:<><div className="student-center-tabs"/);
+ assert.match(app,/recordTab==='rules'&&<PointRulesPanel/);
  assert.match(app,/PointRulesPanel key=/);
  assert.match(panel,/仅用于试算|输入仅用于试算/);
  assert.match(panel,/不包含正式阈值折算/);
