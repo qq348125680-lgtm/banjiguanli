@@ -383,3 +383,36 @@
  .case-action-buttons .button{min-height:46px}
  .case-options button{min-height:44px;flex:1}
 }
+
+/* V7 inbox: account-specific work requiring action, not fictitious unread alerts. */
+.task-inbox{min-width:0}
+.task-inbox .panel-head{align-items:center;gap:12px}
+.task-inbox .panel-head>.record-refresh{flex-shrink:0;min-height:42px}
+.task-inbox-total{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding:14px 16px;margin:16px 0;border-radius:12px;background:#f5f8ff;border:1px solid #e0e8f7}
+.task-inbox-total strong{font-size:29px;line-height:1;color:#4665a4;font-weight:750}
+.task-inbox-total span{font-size:13px;font-weight:700;color:#4a5d84}
+.task-inbox-total small{margin-left:auto;color:#8493ae;font-size:11px}
+.task-inbox-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:14px 0}
+.task-inbox-group{background:#fff;border:1px solid #e6eaf3;border-radius:12px;padding:13px;min-width:0}
+.task-inbox-group-head{display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #edf0f6;padding-bottom:10px;margin-bottom:8px}
+.task-inbox-group-head strong{font-size:13px;color:#485b7e}
+.task-inbox-group-head span{font-size:12px;border-radius:8px;padding:4px 9px;background:#edf3ff;color:#4b68a8;font-weight:700}
+.task-inbox-link{width:100%;border:0;border-radius:9px;background:transparent;text-align:left;padding:11px 7px;cursor:pointer;display:flex;gap:10px;align-items:center;justify-content:space-between;color:inherit}
+.task-inbox-link+.task-inbox-link{border-top:1px solid #f0f2f6}
+.task-inbox-link:focus-visible,.task-inbox-link:hover{background:#f3f6fd;outline-color:#6884c3}
+.task-inbox-link>div{min-width:0;display:flex;flex-direction:column;gap:5px}
+.task-inbox-link strong{font-size:12px;line-height:1.5;color:#4d6286;overflow-wrap:anywhere}
+.task-inbox-link small{font-size:11px;color:#8995aa;line-height:1.5}
+.task-inbox-link>span{font-size:11px;color:#5273b0;flex-shrink:0}
+.task-inbox-group>.muted{font-size:11px;line-height:1.6}
+.dossier-extra-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+@media(max-width:700px){
+ .task-inbox .panel-head{align-items:stretch;flex-direction:column}
+ .task-inbox .panel-head>.record-refresh{width:100%;min-height:44px}
+ .task-inbox-groups{grid-template-columns:1fr}
+ .task-inbox-total{gap:8px;padding:13px}
+ .task-inbox-total small{width:100%;margin-left:0}
+ .task-inbox-link{min-height:50px;padding:10px}
+ .dossier-extra-actions{width:100%}
+ .dossier-extra-actions button{min-height:44px;flex:1}
+}
