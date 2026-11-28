@@ -270,7 +270,7 @@ export default function App(){
    finishKnownWrite(browserSessionStorage(),'submit',intentScope,submittedStudent);
    setRecoveryRevision(v=>v+1);
    if(scopeRef.current===operationScope){
-    setUncertainSubmit(null);setNote('');setPage(1);
+    setUncertainSubmit(null);setNote('');setAttendance('出勤');setPage(1);
     setSubmittedSession(prev=>markSubmissionConfirmed(prev,submittedStudent));
     setSelected(nextOutstanding(roster,[...submittedSession,submittedStudent],submittedStudent));
     await loadData();
@@ -369,7 +369,7 @@ export default function App(){
 
  // Page count is now owned by ReviewPanel.
  useEffect(()=>{
-  setSubmittedSession([]);setSelected('');
+  setSubmittedSession([]);setSelected('');setAttendance('出勤');setNote('');
   const marker=user?.id&&classId&&isValidDate(day)?inspectPendingMarker(browserSessionStorage(),'submit',{accountId:user.id,classId,day}):null;
   setUncertainSubmit(marker?.id&&user?{accountId:user.id,classId,day,studentId:marker.id}:null);
  },[classId,day,user?.id]);
