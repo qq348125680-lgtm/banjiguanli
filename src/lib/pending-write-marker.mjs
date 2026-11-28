@@ -22,7 +22,9 @@ export function loadPendingMarker(storage,kind,scope,now=Date.now()){
   const raw=storage.getItem(key);if(!raw)return null;
   const v=JSON.parse(raw);
   if(!validUuid(v?.id)||!Number.isFinite(v?.savedAt)||v.savedAt>now+60_000||now-v.savedAt>LIMIT_MS){
-   storage.removeItem(key);return null;
+   // Preserve unreadable/expired markers for reconciliation instead of silently
+   // deleting evidence that an interrupted remote write might have occurred.
+   return null;
   }
   return v.id;
  }catch{return null}
