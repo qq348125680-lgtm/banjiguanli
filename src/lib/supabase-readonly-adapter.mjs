@@ -1,3 +1,4 @@
+import {validateRecordPage} from './class-records.mjs';
 /** V7 Alpha8 safe read-only bridge. Never calls insert/update/delete/upsert/rpc. */
 export const MAPPING=Object.freeze({
   submissions:'cadre_submissions',students:'students',classes:'classes',delegates:'class_delegates',
@@ -37,6 +38,23 @@ export function createReadOnlyBridge(client){
   // Do not infer actor names from email or expose old_data/new_data by default.
   const {data,error,count}=await client.from('operation_audit').select('id,table_name,row_id,action,actor_id,changed_at',{count:'exact'}).eq('class_id',classId).order('changed_at',{ascending:false}).range((page-1)*pageSize,page*pageSize-1);
   if(error)throw error;return {items:data??[],count:count??null,page,pageSize};
+ }
+
+ /** Return only the owner-authorized active class's paged business records; no writes. */
+ async function classRecordsForOwner(classId,kind,{page=1,pageSize=10}={}){
+  assertUuid(classId);
+  const def=validateRecordPage(kind,page,pageSize);
+  await verifyOwner(classId);
+  const members=await studentsForOwner(classId);
+  // Bound class membership locally and by server RLS; never query unrelated students.
+  if(members.length>500)throw Error('班级学生数量超出当前安全查询上限，请使用旧版系统');
+  if(members.length===0)return {items:[],count:0,page,pageSize,students:[]};
+  const ids=members.map(x=>x.id);
+  let q=client.from(def.table).select(def.fields,{count:'exact'});
+  q=def.classScoped?q.eq('class_id',classId).in('student_id',ids):q.in('student_id',ids);
+  const {data,error,count}=await q.order(def.date,{ascending:false}).order('id',{ascending:false}).range((page-1)*pageSize,page*pageSize-1);
+  if(error)throw error;
+  return {items:data??[],count:count??null,page,pageSize,students:members};
  }
 
  const DOSSIER_TABLES=Object.freeze({
@@ -81,5 +99,5 @@ export function createReadOnlyBridge(client){
   }));
   return {student,sections:Object.fromEntries(results)};
  }
- return Object.freeze({user,ownedClasses,authorizedClasses,studentsForOwner,submissionsForOwner,mySubmissions,pendingCountForOwner,auditForOwner,dossierForOwner,dossierPageForOwner});
+ return Object.freeze({user,ownedClasses,authorizedClasses,studentsForOwner,submissionsForOwner,mySubmissions,pendingCountForOwner,auditForOwner,dossierForOwner,dossierPageForOwner,classRecordsForOwner});
 }
