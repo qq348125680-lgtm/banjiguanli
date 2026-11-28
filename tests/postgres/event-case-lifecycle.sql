@@ -7,7 +7,12 @@ set local request.jwt.claim.sub='11111111-1111-4111-8111-111111111111';
 do $$
 declare v uuid; v2 uuid; n int;
 begin
- v:=public.v7_create_event_case('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+ select count(*) into n from public.v7_event_case_assignees('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+ if n<>3 then raise exception 'owner should see self + two active cadres, got %',n;end if;
+ if exists(select 1 from public.v7_event_case_assignees('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
+  where user_id='44444444-4444-4444-8444-444444444444') then
+  raise exception 'disabled cadre appears in assignable directory';end if;
+  v:=public.v7_create_event_case('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
  'aaaaaaaa-0000-4000-8000-000000000001','违纪','模拟课堂事件','用于验收的虚构描述',
  '77777777-7777-4777-8777-777777777777');
  v2:=public.v7_create_event_case('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -39,7 +44,11 @@ set local request.jwt.claim.sub='33333333-3333-4333-8333-333333333333';
 do $$
 declare v uuid;n int;
 begin
- select id into v from public.v7_event_cases where request_key='77777777-7777-4777-8777-777777777777';
+ begin
+  perform * from public.v7_event_case_assignees('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+  raise exception 'cadre should not enumerate all assignable users';
+ exception when insufficient_privilege then null;end;
+  select id into v from public.v7_event_cases where request_key='77777777-7777-4777-8777-777777777777';
  if v is null then raise exception 'assignee cannot read assigned case';end if;
  begin
   perform public.v7_transition_event_case(v,'close',null,'fake close');
