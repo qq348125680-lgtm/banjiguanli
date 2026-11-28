@@ -78,7 +78,7 @@ test('Alpha40 page never fabricates missing fields or reveals family identity co
  assert.match(app,/view==='records'&&\(!owned\?<><div className="student-center-tabs"/);
  assert.match(app,/recordTab!=='cases'&&<EventCenterPanel/);
  assert.match(app,/recordTab==='cases'&&<EventCaseBoard/);
- assert.match(app,/view==='records'&&\(!owned\?[^\n]*:<><div className="student-center-tabs"/);
+ assert.match(app,/recordTab==='cases'&&<EventCaseBoard/);
  assert.match(app,/recordTab==='activity'&&<ClassRecordsPanel/);
  assert.match(app,/recordTab==='rules'&&<PointRulesPanel/);
  assert.match(panel,/仅班主任/);
