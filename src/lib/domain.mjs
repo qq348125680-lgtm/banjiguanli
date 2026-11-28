@@ -20,3 +20,13 @@ export function canReviewSubmission(items,id,action){
  if(!['approve','reject'].includes(action)||!Array.isArray(items))return false;
  return items.some(item=>item.id===id&&item.status==='待审核'&&item.entry_type==='考勤');
 }
+
+/** Fail-safe classification: only a known server-side rejection is definitive.
+ * Network loss/5xx/unknown errors can happen AFTER a commit, so never auto-resubmit.
+ */
+export function uncertainWriteOutcome(error){
+ const code=String(error?.code??'');
+ if(['42501','23505','23514','23503','23502','22023','PGRST202','42883'].includes(code))return false;
+ if(!code&&typeof error?.message==='string'&&/学生已不在授权班级|日期不合法|状态不合法|说明不能超过|仅开放考勤提交|UUID/i.test(error.message))return false;
+ return true;
+}
