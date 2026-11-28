@@ -3,7 +3,7 @@ import type {StudentItem} from '../lib/bridge';
 import {dutyWorkload,proposeDutySubstitute,planDutyRotation} from '../lib/duty-planner.mjs';
 
 export function DutyAdvisorPanel({records,students}:{records:Record<string,unknown>[];students:StudentItem[]}){
- const duties=records.map(r=>({student_id:String(r.student_id??''),duty_date:String(r.duty_date??''),area:String(r.area??''),status:String(r.status??'')}));
+ const duties=records.map(r=>({id:String(r.id??''),student_id:String(r.student_id??''),duty_date:String(r.duty_date??''),area:String(r.area??''),status:String(r.status??'')}));
  const [absentId,setAbsentId]=useState(''),[date,setDate]=useState(''),[unavailableIds,setUnavailableIds]=useState<string[]>([]);
  const [result,setResult]=useState<ReturnType<typeof proposeDutySubstitute>|null>(null);
  const [error,setError]=useState('');
