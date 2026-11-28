@@ -39,6 +39,10 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Unit tests
         run: npm test
+      - name: Source safety contracts (fail build on regression)
+        run: npm run verify:source
+      - name: Verify local module imports
+        run: npm run preflight:offline
       - name: Build for repository subpath
         run: npm run build -- --base=/banjiguanli/
       - name: Verify Pages asset paths, public-only build, and no elevated key
