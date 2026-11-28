@@ -416,3 +416,19 @@
  .dossier-extra-actions{width:100%}
  .dossier-extra-actions button{min-height:44px;flex:1}
 }
+
+/* V7 responsibility transfers and six-category student history. */
+.case-transfer-controls{flex-wrap:wrap}
+.case-transfer-controls>label{min-width:180px}
+.case-transfer-controls>label:has(textarea){flex-basis:100%}
+.case-transfer-detail{color:#4569a6!important;font-weight:650;border-left:2px solid #a8bdf3;padding-left:8px}
+.dossier-growth-summary{display:flex;gap:14px;align-items:center;margin:12px 0 19px;padding:13px 16px;background:#f6f8fe;border:1px solid #dfe7f5;border-radius:11px}
+.dossier-growth-summary>strong{font-size:25px;color:#4a63a0;line-height:1;min-width:34px;text-align:center}
+.dossier-growth-summary>div{display:flex;flex-direction:column;gap:5px;min-width:0}
+.dossier-growth-summary b{font-size:13px;color:#4b5e7f}
+.dossier-growth-summary small{font-size:11px;line-height:1.55;color:#8290a7}
+@media(max-width:700px){
+ .case-transfer-controls>label{width:100%;min-width:0}
+ .case-transfer-controls .button{min-height:46px}
+ .dossier-growth-summary{padding:13px}
+}
