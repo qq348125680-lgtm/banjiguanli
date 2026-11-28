@@ -211,3 +211,8 @@
 .preview-duty-tile{display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;border-radius:12px;border:1px solid #e4eaf5;background:#f8faff;padding:20px 10px;color:#4e608c}
 .preview-duty-tile strong{font-size:13px}.preview-duty-tile span{font-size:22px;font-weight:700}
 @media(max-width:700px){.safe-workspace .sidebar{z-index:16}.safe-preview-banner{font-size:12px}.preview-steps,.preview-duty-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.preview-class-label{margin-top:15px}.preview-class-label strong{width:100%}}
+
+/* Alpha45: verified, owner-only UID attribution. */
+.review-cadre-actor{min-width:0;display:flex;flex-direction:column;gap:4px}
+.review-cadre-actor strong{font-size:12px;color:#40537c;overflow-wrap:anywhere}
+.review-cadre-actor code{font-size:11px;color:#8b97ad;overflow-wrap:anywhere}
