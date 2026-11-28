@@ -19,6 +19,8 @@ import {TaskInboxPanel} from './components/TaskInboxPanel';
 import {CaseDueReminderPanel} from './components/CaseDueReminderPanel';
 import {CaseNudgeInboxPanel} from './components/CaseNudgeInboxPanel';
 import {ClassCaseOverviewPanel} from './components/ClassCaseOverviewPanel';
+import {WeeklyCaseReportPanel} from './components/WeeklyCaseReportPanel';
+import {ClosedCaseArchivePanel} from './components/ClosedCaseArchivePanel';
 import {GuardianLinksPanel} from './components/GuardianLinksPanel';
 import {RelationshipCenterPanel} from './components/RelationshipCenterPanel';
 import {buildDelegateEventFeed} from './lib/class-event-system.mjs';
@@ -141,6 +143,16 @@ export default function App(){
    throw Error('仅班主任可以查看全班工单统计');
   const [overview,people]=await Promise.all([bridges.cases.classOverview(classId),bridges.cases.assignees(classId)]);
   return {...overview,people};
+ },[bridges,user?.id,classId,owned,isAuthorizedClass,authorizationBlocked,authorizationChecking]);
+ const fetchWeeklyCaseReport=useCallback(async(monday:string)=>{
+  if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking)
+   throw Error('没有当前班级周报查看权限');
+  return bridges.cases.weeklyReport(classId,monday);
+ },[bridges,user?.id,classId,owned,isAuthorizedClass,authorizationBlocked,authorizationChecking]);
+ const fetchClosedCaseArchive=useCallback(async(filters:{page:number;pageSize:number;kind:string;from:string;to:string})=>{
+  if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking)
+   throw Error('没有当前班级结案工单归档权限');
+  return bridges.cases.closedArchive(classId,filters);
  },[bridges,user?.id,classId,owned,isAuthorizedClass,authorizationBlocked,authorizationChecking]);
  const fetchRelationships=useCallback(async()=>{
   if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking)throw Error('当前身份不能查看用户关系');
@@ -530,8 +542,8 @@ export default function App(){
    {recordTab==='events'&&<EventCenterPanel key={`${user.id}:${classId}:events`} load={fetchEventFeed} owned={owned} onStudent={openEventStudent} onRecord={openEventRecord} onCreateCase={canWrite?openCaseFromEvent:undefined} onOpenCase={openExactCase} onRelations={openLinkedRelations} focusStudentId={linkedStudentId} onClearFocus={()=>setLinkedStudentId('')}/>} 
    {recordTab==='rules'&&<PointRulesPanel key={`${user.id}:${classId}`} load={fetchPointRules}/>}
    {recordTab==='cases'&&<EventCaseBoard key={`${user.id}:${classId}:cases`} api={bridges!.cases} classId={classId} userId={user.id} owned={true} canWrite={canWrite} students={roster} onStudent={openEventStudent} initialDraft={caseDraft} initialStudentId={caseStudentId} initialCaseId={caseFocusId} initialStatus={caseFilterStatus}/>}</>)}
-  {view==='archive'&&owned&&<AuditPanel audits={audits} total={auditTotal} page={page} pageSize={pageSize} loading={loading} setPage={setPage} setPageSize={setPageSize}/>}
- {view==='reports'&&<><ReportsPanel items={items} rosterCount={students.length} rosterLoaded={rosterLoaded} pendingCount={pendingCount} owned={owned} total={total} loading={loading} onReview={()=>selectView('review')}/>{owned&&<ClassCaseOverviewPanel key={`${user.id}:${classId}:case-overview`} load={fetchClassCaseOverview} roster={roster} onStatus={openCasesByStatus} onOpenCases={()=>openCasesByStatus('全部')}/>}</>}
+  {view==='archive'&&owned&&<><ClosedCaseArchivePanel key={`${user.id}:${classId}:closed-cases`} load={fetchClosedCaseArchive} roster={roster} onOpen={openExactCase}/><AuditPanel audits={audits} total={auditTotal} page={page} pageSize={pageSize} loading={loading} setPage={setPage} setPageSize={setPageSize}/></>}
+ {view==='reports'&&<><ReportsPanel items={items} rosterCount={students.length} rosterLoaded={rosterLoaded} pendingCount={pendingCount} owned={owned} total={total} loading={loading} onReview={()=>selectView('review')}/>{owned&&<><ClassCaseOverviewPanel key={`${user.id}:${classId}:case-overview`} load={fetchClassCaseOverview} roster={roster} onStatus={openCasesByStatus} onOpenCases={()=>openCasesByStatus('全部')}/><WeeklyCaseReportPanel key={`${user.id}:${classId}:weekly-report`} load={fetchWeeklyCaseReport} className={classes.find(c=>c.id===classId)?.name??'当前班级'}/></>}</>}
   {view==='archive'&&!owned&&<section className="panel placeholder"><div className="placeholder-icon">✧</div><h2>工作档案</h2><p>当前身份无法读取全班操作记录。正式归档功能仍使用旧版系统。</p><Button onClick={()=>selectView('dashboard')} secondary>返回工作台</Button></section>}
  </>}</main><nav className="bottom-nav">{nav.slice(0,4).map(([key,label,Icon])=><button key={key} className={view===key?'active':''} onClick={()=>selectView(key)}><Icon size={20}/><small>{label}</small></button>)}</nav></div></div>
 }
