@@ -469,3 +469,25 @@
  .guardian-actions>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
  .guardian-actions .button{min-height:46px}
 }
+
+/* V7 real source record linkage and independent per-student case totals. */
+.case-linked-source{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:10px 12px;margin:0 0 13px;border:1px solid #cfdef6;background:#edf4ff;border-radius:10px;color:#46638f;font-size:12px;line-height:1.5}
+.case-linked-source>span{overflow-wrap:anywhere}
+.case-linked-source>button{min-height:39px;flex-shrink:0}
+.dossier-case-metrics{border:1px solid #e2e9f4;border-radius:13px;padding:14px 15px;margin-bottom:14px;background:#fff;min-width:0}
+.dossier-case-metrics-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.dossier-case-metrics-heading strong{color:#506586;font-size:14px}
+.dossier-case-metrics-heading button{min-height:40px}
+.dossier-case-metrics-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.dossier-case-metrics-grid>div{display:flex;flex-direction:column;align-items:center;gap:8px;padding:11px 7px;border-radius:10px;background:#f6f8fc;border:1px solid #e7ebf4}
+.dossier-case-metrics-grid b{font-size:22px;color:#4e68a1}
+.dossier-case-metrics-grid span{font-size:11px;color:#7f8da6;text-align:center}
+.dossier-case-metrics>.muted{font-size:11px;margin-top:11px;line-height:1.5}
+@media(max-width:700px){
+ .case-linked-source{align-items:stretch;flex-direction:column}
+ .case-linked-source>button{width:100%;min-height:44px}
+ .dossier-case-metrics-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+ .dossier-case-metrics-grid b{font-size:18px}
+ .dossier-case-metrics-grid span{font-size:10px}
+ .dossier-case-metrics{padding:12px}
+}
