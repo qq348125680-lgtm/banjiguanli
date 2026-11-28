@@ -7,7 +7,7 @@ export function AttendanceEntryPanel(p:AttendanceEntryProps){
  const ready=p.canSubmit&&canSubmitToRoster({roster:p.roster,studentId:p.selected,classId:p.classId,owned:p.owned})&&isValidDate(p.day)&&!p.completed.includes(p.selected)&&p.uncertainStudentId!==p.selected&&!p.busy;
  return <section className="panel"><h2>班干部快捷考勤</h2><p className="muted">登记后进入待审核，不立即覆盖正式考勤。下方“已提交”仅代表本次打开页面期间成功提交的申请。</p>
  <EntryProgress roster={p.roster} completed={p.completed} selected={p.selected} onSelect={p.setSelected} loading={p.loading||p.busy}/>
- {p.uncertainStudentId&&<div role="alert" className="notice"><strong>存在尚未确认的提交结果</strong><p>当前账号本班级本日的该学生考勤可能已经被服务器保存，禁止直接重复提交。请先查询服务器实际申请，再判断下一步。</p><button type="button" className="record-refresh" disabled={p.busy||p.loading} onClick={p.verifyUncertain}>{p.busy?'核对中…':'核对提交结果'}</button></div>}
+ {p.uncertainStudentId&&<div role="alert" className="notice"><strong>存在尚未确认的提交结果</strong><p>当前账号本班级本日的该学生考勤可能已经被服务器保存。核实前暂停本班本日其他考勤提交，避免未确认记录互相覆盖。请先查询服务器实际申请，再判断下一步。</p><button type="button" className="record-refresh" disabled={p.busy||p.loading} onClick={p.verifyUncertain}>{p.busy?'核对中…':'核对提交结果'}</button></div>}
  <div className="fields"><label>选择学生<select disabled={p.busy||p.loading} value={p.selected} onChange={e=>p.setSelected(e.target.value)}><option value="">请选择学生</option>{p.roster.map(st=><option key={st.id} value={st.id}>{st.student_no} · {st.name}</option>)}</select></label>
  <label>日期<input type="date" disabled={p.busy} value={p.day} onChange={e=>p.setDay(e.target.value)}/></label>
  <label>考勤状态<select disabled={p.busy} value={p.attendance} onChange={e=>p.setAttendance(e.target.value)}>{attendanceStatuses.map((v:string)=><option key={v}>{v}</option>)}</select></label>
