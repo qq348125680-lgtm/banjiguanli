@@ -75,3 +75,12 @@ assert.match(guard,/inspectPendingMarker\(storage,kind,scope\)\.id!==id/);
 assert.match(inbox,/标记异常，需人工核对/);
 assert.match(css,/\.recovery-inbox\{/);
 console.log('Alpha47 recovery inbox source contracts: 9 assertions PASS');
+
+// Alpha47: mobile one-tap attendance, per-student notes/status isolation.
+assert.match(entry,/const selectStudent=\(id:string\)=>/);
+assert.match(entry,/p\.setNote\(''\);p\.setAttendance\('出勤'\)/);
+assert.match(entry,/aria-pressed=\{p\.attendance===status\}/);
+assert.match(entry,/attendance-mobile-status/);
+assert.match(app,/setUncertainSubmit\(null\);setNote\(''\);setAttendance\('出勤'\)/);
+assert.match(css,/\.attendance-status-desktop\{display:none!important\}/);
+console.log('Alpha47 phone one-tap and safe student context switch: 6 assertions PASS');
