@@ -35,7 +35,7 @@ function fakeClient({ownerEnabled=true,studentEnabled=true}={}){
 test('Alpha45 only owner resolves linked class delegate UID into active roster name',async()=>{
  const {client,calls}=fakeClient();const r=await createReadOnlyBridge(client).cadreDirectoryForOwner(cid);
  assert.equal(r.length,2);
- assert.deepEqual(r[0],{uid,studentName:undefined,name:'测试学生',duty:'班长',enabled:true});
+ assert.deepEqual(r[0],{uid,name:'测试学生',duty:'班长',enabled:true});
  assert.equal(r[1].name,null);
  assert.equal(r[1].enabled,false);
  const studentQuery=calls.find(x=>x.table==='students');
