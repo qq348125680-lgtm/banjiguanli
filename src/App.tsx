@@ -24,6 +24,7 @@ import {invalidateSelectedClass} from './lib/authorization-race.mjs';
 import {decideReadFailure} from './lib/read-failure-policy.mjs';
 import {withReadDeadline} from './lib/read-deadline.mjs';
 import {withUncertainWriteDeadline} from './lib/write-deadline.mjs';
+import {browserSessionStorage,loadPendingMarker,savePendingMarker,clearPendingMarker} from './lib/pending-write-marker.mjs';
 
 type View='dashboard'|'students'|'entry'|'review'|'records'|'reports'|'archive';
 const nav:[View,string,typeof LayoutDashboard][]=[['dashboard','工作台',LayoutDashboard],['students','学生中心',Users],['entry','班级事务',ClipboardList],['review','审核中心',ClipboardCheck],['records','班务记录',BookOpen],['reports','数据分析',ShieldCheck],['archive','工作档案',Archive]];
@@ -61,7 +62,11 @@ export default function App(){
  const authorizedClassIds=useMemo(()=>[...classes.map(c=>c.id),...delegated.map(d=>d.class_id)],[classes,delegated]);
  const isAuthorizedClass=Boolean(classId)&&authorizedClassIds.includes(classId);
  const owned=classes.some(c=>c.id===classId);
- useEffect(()=>{setDossierId('');setStudentTab('roster');setRecordTab('activity');setReviewNotes({});setBusyId('');setUncertainReview(null);setFeedback('')},[classId,user?.id]);
+ useEffect(()=>{
+  setDossierId('');setStudentTab('roster');setRecordTab('activity');setReviewNotes({});setBusyId('');setFeedback('');
+  const id=user?.id&&classId?loadPendingMarker(browserSessionStorage(),'review',{accountId:user.id,classId}):null;
+  setUncertainReview(id&&user?{accountId:user.id,classId,id}:null);
+ },[classId,user?.id]);
  const fetchDossierPage=useCallback(async(section:'考勤'|'请假'|'违纪'|'积分'|'值日',targetPage:number,targetPageSize:number):Promise<DossierPage>=>{
   if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking||!dossierId)throw new Error('当前无权读取档案');
   return bridges.reader.dossierPageForOwner(classId,dossierId,section,{page:targetPage,pageSize:targetPageSize});
@@ -246,6 +251,7 @@ export default function App(){
   try{
    await withUncertainWriteDeadline(()=>bridges.writer.submit({classId:submittedClass,studentId:submittedStudent,entryType:'考勤',date:submittedDay,status:attendance,note}));
    if(scopeRef.current===operationScope){
+    clearPendingMarker(browserSessionStorage(),'submit',{accountId:submittedAccount,classId:submittedClass,day:submittedDay});
     setUncertainSubmit(null);setNote('');setPage(1);
     setSubmittedSession(prev=>markSubmissionConfirmed(prev,submittedStudent));
     setSelected(nextOutstanding(roster,[...submittedSession,submittedStudent],submittedStudent));
@@ -255,6 +261,7 @@ export default function App(){
   }catch(e){
    if(scopeRef.current===operationScope){
     if(uncertainWriteOutcome(e)){
+     savePendingMarker(browserSessionStorage(),'submit',{accountId:submittedAccount,classId:submittedClass,day:submittedDay},submittedStudent);
      setUncertainSubmit({accountId:submittedAccount,classId:submittedClass,day:submittedDay,studentId:submittedStudent});
      setProblem('提交结果暂时无法确认：服务器可能已保存申请。已锁定此学生本日重复提交，请先核对「我的提交记录」。');
     }else setProblem(displayError(e));
@@ -271,6 +278,7 @@ export default function App(){
    if(scopeRef.current!==`${pending.accountId}:${pending.classId}:${pending.day}`)return;
    if(records.length){
     setSubmittedSession(prev=>markSubmissionConfirmed(prev,pending.studentId));
+    clearPendingMarker(browserSessionStorage(),'submit',{accountId:pending.accountId,classId:pending.classId,day:pending.day});
     setUncertainSubmit(null);
     setFeedback('已在服务器查询到该学生本日的考勤申请；请到「我的提交记录」核对状态，不要再次提交。');
     await loadData();
@@ -291,12 +299,14 @@ export default function App(){
   try{
    await withUncertainWriteDeadline(()=>bridges.writer.review(id,action,reviewNotes[id]??''));
    if(scopeRef.current===operationScope){
+    clearPendingMarker(browserSessionStorage(),'review',{accountId:account,classId:submittedClass});
     setUncertainReview(null);await loadData();
     if(scopeRef.current===operationScope)setFeedback(action==='approve'?'审核已通过，服务端事务已返回结果。':'已驳回，并保留审核原因。');
    }
   }catch(e){
    if(scopeRef.current===operationScope){
     if(uncertainWriteOutcome(e)){
+     savePendingMarker(browserSessionStorage(),'review',{accountId:account,classId:submittedClass},id);
      setUncertainReview({accountId:account,classId:submittedClass,id});
      setProblem('审核结果未知：可能已经完成数据库事务。已锁定此申请的重复审批，请先核对服务器状态。');
     }else setProblem(displayError(e));
@@ -312,6 +322,7 @@ export default function App(){
    const record=await withReadDeadline(()=>bridges.writer.verifyReview({classId:pending.classId,submissionId:pending.id}));
    if(activeAccountId.current!==pending.accountId||classId!==pending.classId)return;
    if(record.status==='已通过'||record.status==='已驳回'){
+    clearPendingMarker(browserSessionStorage(),'review',{accountId:pending.accountId,classId:pending.classId});
     setUncertainReview(null);
     await loadData();
     setFeedback('服务器已确认此申请状态：'+record.status+'。请核对实际记录，不要再次批准。');
@@ -325,7 +336,11 @@ export default function App(){
  const names=useMemo(()=>new Map(roster.map(s=>[s.id,s.name])),[roster]);
 
  // Page count is now owned by ReviewPanel.
- useEffect(()=>{setSubmittedSession([]);setSelected('');setUncertainSubmit(null)},[classId,day,user?.id]);
+ useEffect(()=>{
+  setSubmittedSession([]);setSelected('');
+  const studentId=user?.id&&classId&&isValidDate(day)?loadPendingMarker(browserSessionStorage(),'submit',{accountId:user.id,classId,day}):null;
+  setUncertainSubmit(studentId&&user?{accountId:user.id,classId,day,studentId}:null);
+ },[classId,day,user?.id]);
  function selectView(next:View){requestSeq.current++;setDossierId('');setView(next);setPage(1);setMobile(false);setFeedback('')}
  const accountSnapshotPending=activeAccountId.current!==(user?.id??'');
  if(accountSnapshotPending)return <div className="auth-shell"><section className="auth-card"><h1>正在切换登录身份</h1><p>旧账号数据已暂时隐藏，正在重新确认当前账号的班级授权。</p></section></div>;
