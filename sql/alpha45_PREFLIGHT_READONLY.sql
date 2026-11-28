@@ -41,12 +41,23 @@ select 'class_delegates_enabled_exists',exists(
 )
 order by check_name;
 
+-- Aggregate-only check: pending duplicate groups must be ZERO before installing
+-- the partial unique index. No student identity leaves the database.
+select count(*)::integer as duplicate_pending_groups
+from (
+ select class_id,student_id,entry_type,occurred_on
+ from public.cadre_submissions where status='待审核'
+ group by class_id,student_id,entry_type,occurred_on having count(*)>1
+) duplicate_groups;
+
 -- Post-migration checks: expect true ONLY after staging migration.
 select 'roster_function_installed' as check_name,
  to_regprocedure('public.v7_cadre_roster(uuid)') is not null as installed
 union all
 select 'review_function_installed',
  to_regprocedure('public.v7_review_attendance(uuid,text,text)') is not null
+union all
+select 'pending_unique_index_installed',to_regclass('public.v7_pending_student_day_unique') is not null
 union all
 select 'student_scope_trigger_installed',exists(
  select 1 from pg_trigger
