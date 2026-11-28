@@ -13,6 +13,22 @@
 
 注：函数/索引不在生产库，是**预期的安全隔离状态**，不是要求立刻往生产库安装迁移。不能在当前条件下把 V7 写入开关改为 `true`。
 
+## 基础表与策略的补充只读核对
+
+检查发现以下 **9 项元数据条件全部满足**：
+
+1. `attendance` 表存在。
+2. `attendance` 已开启 RLS。
+3. `attendance` 存在学生＋日期唯一约束。
+4. `cadre_submissions` 已开启 RLS。
+5. `submissions_cadre_insert` 插入策略存在。
+6. `submissions_teacher` 策略存在。
+7. `delegates_self_read` 策略存在。
+8. `students.archived_at` 字段存在。
+9. `class_delegates.enabled` 字段存在。
+
+当前待审核考勤的重复学生＋班级＋日期组合计数为 **0 组**（仅返回汇总数量，没有查询具体学生）。这些是部署前的基础兼容性检查；**策略存在不等于策略内容安全**，函数执行授权和两账号真实行为仍须验收。
+
 ## 安全顾问只读检查
 
 Supabase Security Advisor 在核对时报告：
