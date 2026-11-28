@@ -38,13 +38,13 @@ export function createEventCaseApi(client){
   if(error)throw error;return data??[];
  }
  async function assignees(classId){
-  const u=await user();assertUuid(classId);
-  const {data:cls,error:ce}=await client.from('classes').select('id,owner_id').eq('id',classId).eq('owner_id',u.id).maybeSingle();
-  if(ce)throw ce;if(!cls)throw Error('只有班主任可以查询当前班级可指派人员');
-  const {data,error}=await client.from('class_delegates')
-   .select('user_id,student_id,duty,enabled').eq('class_id',classId).eq('enabled',true).limit(100);
+  await user();assertUuid(classId);
+  // Legacy class_delegates SELECT RLS may hide cadres from the class owner;
+  // a dedicated owner-verified RPC returns only the minimum assignee fields.
+  const {data,error}=await client.rpc('v7_event_case_assignees',{p_class_id:classId});
   if(error)throw error;
-  return [{user_id:u.id,student_id:null,duty:'班主任（本人）',enabled:true},...(data??[])];
+  if(!Array.isArray(data))throw Error('负责人列表格式不正确');
+  return data.filter(x=>x?.enabled===true&&typeof x.user_id==='string');
  }
  async function findByRequestKey(classId,requestKey){
   const u=await user();assertUuid(classId);assertUuid(requestKey);
