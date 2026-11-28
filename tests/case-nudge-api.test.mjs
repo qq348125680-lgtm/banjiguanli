@@ -84,5 +84,5 @@ test('无有效班干部授权时，拒绝读取催办而非显示无任务',asy
   from(table){return {select(){return this},eq(){return this},maybeSingle:async()=>({data:null,error:null})}},
   rpc:async()=>({data:null,error:null})
  };
- await assert.rejects(()=>createEventCaseApi(client).pendingNudges(cls),/没有当前授权班级/);
+ await assert.rejects(()=>createEventCaseApi(client).pendingNudges(cls),/不在当前授权班级/);
 });
