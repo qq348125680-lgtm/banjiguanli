@@ -105,3 +105,21 @@
 .record-filters button{white-space:nowrap}
 @media(max-width:1000px){.record-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.record-filters{grid-template-columns:1fr;gap:11px}.record-filters button{width:100%}.record-toolbar button{flex:1}}
+
+/* Alpha41: provisional duty substitution — never an automatic assignment. */
+.duty-advisor{border:1px solid #dae4f8;border-radius:14px;padding:18px;margin:19px 0;background:#f9fbff}
+.duty-advisor h3{font-size:15px;margin:0 0 8px;color:#384d78}
+.duty-form{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;margin:15px 0}
+.duty-form label{display:flex;flex-direction:column;gap:7px;font-size:12px;color:#697a99}
+.duty-form select{width:100%;min-width:0}
+.duty-exclusions{border-top:1px solid #e4e9f5;padding-top:12px;margin:12px 0}
+.duty-chip-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px;max-height:160px;overflow:auto}
+.duty-chip-list label{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #e1e8f3;padding:7px 10px;border-radius:9px;font-size:12px}
+.duty-chip-list input{min-height:17px;min-width:17px;accent-color:#596cbb}
+.duty-result{background:#fff;border:1px solid #c7d9f0;border-radius:11px;padding:14px;margin:12px 0}
+.duty-result strong{font-size:14px;color:#315994}
+.duty-result p{margin:7px 0 0;color:#667893}
+.duty-ranking{border-top:1px solid #e6ebf4;margin-top:16px;padding-top:12px}
+.duty-ranking summary{font-size:13px;cursor:pointer;color:#5066a2}
+.duty-ranking p{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #e9edf5;padding:8px 3px;margin:0}
+@media(max-width:700px){.duty-advisor{padding:13px}.duty-form{grid-template-columns:1fr}.duty-form button{min-height:44px}.duty-ranking p{font-size:12px}}
