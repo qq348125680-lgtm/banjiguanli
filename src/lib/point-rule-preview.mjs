@@ -1,7 +1,7 @@
 /** Local-only arithmetic on point rules already read from the owner's class.
  * Does NOT interpret threshold/converted_points or alter persisted rules/events.
  */
-export function previewPointRule(rule,count=1,override=null){
+export function previewPointRule(rule,count=1,override=/** @type {number|string|null} */ (null)){
  const times=Number(count);
  if(!Number.isSafeInteger(times)||times<1||times>20)throw Error('试算次数须为 1—20 的整数');
  const unit=override===null?Number(rule?.unit_points):Number(override);
