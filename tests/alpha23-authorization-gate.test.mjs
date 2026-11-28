@@ -13,7 +13,7 @@ test('only an awaited successful authorization refresh may override the old bloc
 test('App data load checks authorization before invoking scoped queries',()=>{
  const app=readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');
  const guard=app.indexOf('if(!canReadAuthorizedScope(');
- const request=app.indexOf('await loadScopedPanels(');
+ const request=app.indexOf('await withReadDeadline(()=>loadScopedPanels(');
  assert.ok(guard>=0 && request>guard);
  assert.match(app,/await loadData\(\[\.\.\.data\.owned/);
 });
