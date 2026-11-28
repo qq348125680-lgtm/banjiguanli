@@ -7,8 +7,8 @@ type EventItem={
  date:string;summary:string;stateLabel:string;needsFollowUp:boolean;nextAction:string;source:string;
 };
 type Feed={events:EventItem[];failedKinds:string[];limited:boolean};
-type Props={load:()=>Promise<Feed>;owned:boolean;onStudent:(id:string)=>void;onRecord:(kind:string)=>void};
-export function EventCenterPanel({load,owned,onStudent,onRecord}:Props){
+type Props={load:()=>Promise<Feed>;owned:boolean;onStudent:(id:string)=>void;onRecord:(kind:string)=>void;onRelations?:(id:string)=>void;focusStudentId?:string;onClearFocus?:()=>void};
+export function EventCenterPanel({load,owned,onStudent,onRecord,onRelations,focusStudentId='',onClearFocus}:Props){
  const [feed,setFeed]=useState<Feed|null>(null);
  const [kind,setKind]=useState('全部'),[scope,setScope]=useState('全部'),[search,setSearch]=useState('');
  const [page,setPage]=useState(1),[revision,setRevision]=useState(0);
@@ -25,11 +25,12 @@ export function EventCenterPanel({load,owned,onStudent,onRecord}:Props){
  const visible=useMemo(()=>{
   const needle=search.trim().toLowerCase();
   return (feed?.events??[]).filter(e=>
+   (!focusStudentId||e.studentId===focusStudentId)&&
    (kind==='全部'||kind===e.kind)&&
    (scope==='全部'||(scope==='待跟进'?e.needsFollowUp:!e.needsFollowUp))&&
    (!needle||e.studentName.toLowerCase().includes(needle)||e.summary.toLowerCase().includes(needle))
   );
- },[feed,kind,scope,search]);
+ },[feed,kind,scope,search,focusStudentId]);
  const pages=Math.max(1,Math.ceil(visible.length/10));
  const pageItems=visible.slice((page-1)*10,page*10);
  const pending=(feed?.events??[]).filter(e=>e.needsFollowUp).length;
@@ -40,6 +41,7 @@ export function EventCenterPanel({load,owned,onStudent,onRecord}:Props){
    <div><strong>{feed?pending:'—'}</strong><span>状态提示待跟进</span></div>
    <div><strong>{feed?.failedKinds.length?'不完整':'只读'}</strong><span>事件数据状态</span></div>
   </div>
+  {focusStudentId&&<div className="event-linked-scope"><span>正在查看从用户关系跳转的指定学生事件</span>{onClearFocus&&<button type="button" className="record-refresh" onClick={onClearFocus}>查看全部学生</button>}</div>}
   <div className="event-filters">
    <label>筛选事件 <select value={kind} onChange={e=>setKind(e.target.value)}><option value="全部">全部事件</option>{CLASS_RECORD_KINDS.map(k=><option value={k} key={k}>{k}</option>)}</select></label>
    <label>当前状态 <select value={scope} onChange={e=>setScope(e.target.value)}><option>全部</option><option>待跟进</option><option>其他</option></select></label>
@@ -54,6 +56,7 @@ export function EventCenterPanel({load,owned,onStudent,onRecord}:Props){
     <p>{item.summary}</p>
     <div className="event-row-next"><span>建议下一步：{item.nextAction}</span>
      <div>{owned&&<button type="button" className="record-refresh" onClick={()=>onStudent(item.studentId)}>学生档案</button>}
+      {owned&&onRelations&&<button type="button" className="record-refresh" onClick={()=>onRelations(item.studentId)}>关联用户</button>}
       {owned&&<button type="button" className="record-refresh" onClick={()=>onRecord(item.kind)}>查看原始记录</button>}
      </div>
     </div>
