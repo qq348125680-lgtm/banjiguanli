@@ -77,6 +77,8 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/event-source-link-lifecycle.sql
       - name: Roll back only new event case source mapping
         run: psql -X -v ON_ERROR_STOP=1 -f sql/v7_case_source_links_STAGING_ONLY_ROLLBACK.sql
+      - name: Remove only synthetic source fixtures and recheck attendance baseline
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/source-record-fixtures-cleanup.sql
       - name: Roll back event case tables and RPCs without affecting existing data
         run: psql -X -v ON_ERROR_STOP=1 -f sql/v7_event_cases_STAGING_ONLY_ROLLBACK.sql
       - name: Roll back only added V7 database objects
