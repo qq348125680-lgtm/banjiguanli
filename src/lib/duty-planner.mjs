@@ -22,7 +22,7 @@ export function dutyWorkload(people,records){
  }
  return [...map.values()].sort((a,b)=>a.weight-b.weight||a.count-b.count||String(a.student_no).localeCompare(String(b.student_no),'zh-CN')||a.id.localeCompare(b.id));
 }
-export function proposeDutySubstitute({people,records,dutyDate,absentStudentId,excludedIds=[]}){
+export function proposeDutySubstitute({people,records,dutyDate,absentStudentId,excludedIds=/** @type {string[]} */ ([])}){
  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(dutyDate??'')))throw Error('请先选择有效值日日期');
  if(!absentStudentId)throw Error('请选择需要替补的学生');
  const list=Array.isArray(records)?records:[];
