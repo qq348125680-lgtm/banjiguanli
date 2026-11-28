@@ -1,3 +1,4 @@
+import {withReadDeadline} from '../lib/read-deadline.mjs';
 import {useEffect,useRef,useState} from 'react';
 type Lookup={data:any;error:string|null};
 type Snapshot={students:Lookup;rooms:Lookup;beds:Lookup;delegates:Lookup;seat:Lookup};
@@ -9,7 +10,7 @@ export function ClassOrganizationPanel({load}:Props){
  const seq=useRef(0);
  useEffect(()=>{
   const version=++seq.current;setBusy(true);setData(null);setError('');
-  load().then(v=>{if(seq.current===version)setData(v)})
+  withReadDeadline(load).then(v=>{if(seq.current===version)setData(v)})
    .catch(()=>{if(seq.current===version)setError('班级组织资料无法读取，请重新验证授权。')})
    .finally(()=>{if(seq.current===version)setBusy(false)});
   return ()=>{seq.current++};
