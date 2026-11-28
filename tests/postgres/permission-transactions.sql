@@ -83,18 +83,61 @@ values
   '考勤','2026-12-01','{"status":"出勤"}','待审核');
 commit;
 
--- Disabled user cannot read any roster.
+-- A different enabled class A delegate must hit the same uniqueness guard.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub='66666666-6666-4666-8666-666666666666';
+do $
+declare n int;
+begin
+ select count(*) into n from public.v7_cadre_roster('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+ if n<>2 then raise exception 'second delegate cannot read authorized roster';end if;
+ begin
+  insert into public.cadre_submissions(class_id,student_id,submitted_by,entry_type,occurred_on,details,status)
+  values('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   'aaaaaaaa-0000-4000-8000-000000000001',
+   '66666666-6666-4666-8666-666666666666','考勤','2026-11-28',
+   '{"status":"迟到"}','待审核');
+  raise exception 'different cadre submitted duplicate pending attendance';
+ exception when unique_violation then null;
+ end;
+end$;
+commit;
+
+-- Disabled user cannot read roster OR INSERT a request even with known UUIDs.
 begin;
 set local role authenticated;
 set local request.jwt.claim.sub='44444444-4444-4444-8444-444444444444';
-do $$
+do $
 begin
  begin
   perform * from public.v7_cadre_roster('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
   raise exception 'disabled user should have no roster access';
  exception when insufficient_privilege then null;
  end;
-end$$;
+ begin
+  insert into public.cadre_submissions(class_id,student_id,submitted_by,entry_type,occurred_on,details,status)
+  values('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   'aaaaaaaa-0000-4000-8000-000000000002',
+   '44444444-4444-4444-8444-444444444444','考勤','2026-12-02',
+   '{"status":"迟到"}','待审核');
+  raise exception 'disabled delegate should not insert pending application';
+ exception when insufficient_privilege then null;
+ end;
+end$;
+commit;
+
+-- A completely anonymous client has no EXECUTE grant on privileged roster RPC.
+begin;
+set local role anon;
+do $
+begin
+ begin
+  perform * from public.v7_cadre_roster('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+  raise exception 'anonymous user accessed privileged roster';
+ exception when insufficient_privilege then null;
+ end;
+end$;
 commit;
 
 -- Unrelated owner B cannot approve any A application.
