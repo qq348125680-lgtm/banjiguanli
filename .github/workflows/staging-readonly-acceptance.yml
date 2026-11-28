@@ -1,6 +1,11 @@
 name: V7 staging synthetic Auth and RLS acceptance (READ ONLY)
 on:
   workflow_dispatch:
+  # Deliberate tag trigger works while the workflow remains on the isolated test
+  # branch; workflow_dispatch alone is discoverable only on the default branch.
+  push:
+    tags:
+      - 'v7-staging-check-*'
 permissions:
   contents: read
 jobs:
