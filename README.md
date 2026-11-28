@@ -7,7 +7,7 @@
 - React + TypeScript + Vite 单页应用，部署分支：`test/v7-build-verification`
 - GitHub Actions：Node 测试、TypeScript 严格检查、Vite 生产构建、产物/密钥扫描及 HTTP 预览冒烟测试
 - GitHub Pages 公网技术预览：https://qq348125680-lgtm.github.io/banjiguanli/
-- Alpha 44 已通过的基线为 200/200 项；Alpha 45 新增的隔离迁移及账号关联测试以最新 GitHub Actions 运行结果为准，**不能把 SQL 草案的自动化检查当作真实 PostgreSQL/RLS 测试。**
+- Alpha 45 已通过 **214/214 项 Node 测试、TypeScript 严格检查、Vite 生产构建和 HTTP 冒烟测试**（[构建记录](https://github.com/qq348125680-lgtm/banjiguanli/actions/runs/46122774887)）。**SQL 草案的自动化检查不能替代真实 PostgreSQL/RLS/并发/备份恢复验收。**
 - 最新 Alpha 45 Pages 部署可在 Actions 中独立核对：[安全预览工作流](https://github.com/qq348125680-lgtm/banjiguanli/actions/workflows/pages-safe-preview.yml)
 
 公开技术预览故意使用空数据库配置并关闭业务写入：**不提供真实登录、学生数据或考勤操作。** 首页新增「查看各模块界面布局（无数据）」入口，可在手机与电脑上体验六个模块导航、空数据状态和响应式布局；不包含真实或虚构学生记录，也不调用 Supabase。
