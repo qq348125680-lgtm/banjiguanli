@@ -103,7 +103,7 @@ assert.match(stage,/signInWithPassword/);
 assert.match(stageGuard,/knownProductionRef='maqxyvqayilmibdrkmxu'/);
 assert.doesNotMatch(stage,/\.insert\(|\.update\(|\.delete\(|\.upsert\(|v7_review_attendance/);
 assert.match(stageYml,/workflow_dispatch:/);
-assert.match(stageYml,/tags:\\s*\\n\\s*- 'v7-staging-check-\\*'/);
+assert.match(stageYml,/tags:\s*\n\s+- 'v7-staging-check-\*'/);
 assert.doesNotMatch(stageYml,/\\n    branches:/);
 assert.match(stageYml,/environment: v7-staging/);
 console.log('Alpha47 follow-up refresh and staged Auth/RLS safety: source assertions PASS');
