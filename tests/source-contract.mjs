@@ -59,3 +59,19 @@ const pagesWorkflow=fs.readFileSync(new URL('../.github/workflows/pages-safe-pre
 assert.match(pagesWorkflow,/VITE_ENABLE_WORKFLOW_WRITES: 'false'/);
 assert.match(pagesWorkflow,/VITE_V7_WRITE_GATE_ACKNOWLEDGED: 'false'/);
 console.log('Alpha47 double write gate and public preview guard: 4 assertions PASS');
+
+
+// Alpha47 recovery: authorized-only, cross-scope navigation with stale marker inspection.
+const index=fs.readFileSync(new URL('../src/lib/pending-marker-index.mjs',import.meta.url),'utf8');
+const guard=fs.readFileSync(new URL('../src/lib/write-intent-guard.mjs',import.meta.url),'utf8');
+const inbox=fs.readFileSync(new URL('../src/components/RecoveryInbox.tsx',import.meta.url),'utf8');
+assert.match(app,/listAuthorizedPendingMarkers\(browserSessionStorage\(\),user\.id,authorizedClassIds\)/);
+assert.match(app,/<RecoveryInbox items=\{recoveryQueue\.items\}/);
+assert.match(app,/function locateRecovery\(/);
+assert.match(app,/inspectPendingMarker\(browserSessionStorage\(\),'submit'/);
+assert.match(app,/inspectPendingMarker\(browserSessionStorage\(\),'review'/);
+assert.match(index,/account!==accountId\|\|!authorized\.has\(classId\)/);
+assert.match(guard,/inspectPendingMarker\(storage,kind,scope\)\.id!==id/);
+assert.match(inbox,/标记异常，需人工核对/);
+assert.match(css,/\.recovery-inbox\{/);
+console.log('Alpha47 recovery inbox source contracts: 9 assertions PASS');
