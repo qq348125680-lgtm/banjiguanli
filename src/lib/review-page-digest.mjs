@@ -14,5 +14,15 @@ export function reviewPageDigest(items, now = new Date()){
   const missingStatus=i.entry_type==='考勤'&&!String(i.details?.status??'').trim();
   return {id:i.id,student_id:i.student_id,entry_type:i.entry_type,occurred_on:i.occurred_on,ageDays,missingStatus,key};
  });
- return {counts,pending:rows.map(x=>({...x,duplicateOnPage:seen.get(x.key)>1})),oldestDays:rows.map(x=>x.ageDays).filter(x=>x!==null).reduce((m,v)=>Math.max(m,v),0)};
+ const bySubmitter=new Map();
+ for(const i of list){
+  const key=typeof i?.submitted_by==='string'&&i.submitted_by.trim()?i.submitted_by:'操作人未知';
+  const current=bySubmitter.get(key)??{actorId:key,visible:0,pending:0,approved:0,rejected:0};
+  current.visible++;
+  if(i.status==='待审核')current.pending++;
+  else if(i.status==='已通过')current.approved++;
+  else if(i.status==='已驳回')current.rejected++;
+  bySubmitter.set(key,current);
+ }
+ return {counts,pending:rows.map(x=>({...x,duplicateOnPage:seen.get(x.key)>1})),oldestDays:rows.map(x=>x.ageDays).filter(x=>x!==null).reduce((m,v)=>Math.max(m,v),0),submitters:[...bySubmitter.values()].sort((a,b)=>b.pending-a.pending||b.visible-a.visible||a.actorId.localeCompare(b.actorId))};
 }
