@@ -57,6 +57,30 @@ export function createReadOnlyBridge(client){
   return {items:data??[],count:count??null,page,pageSize,students:members};
  }
 
+ /** Read a class's current seats, dorms and cadre assignments with server RLS enforced. */
+ async function classOrganizationForOwner(classId){
+  assertUuid(classId);await verifyOwner(classId);
+  const [studentRes,roomRes,delegateRes,seatRes]=await Promise.allSettled([
+   query(client.from('students').select('id,name,student_no,seat_no,group_name').eq('class_id',classId).is('archived_at',null).order('student_no')),
+   query(client.from('dorm_rooms').select('id,room_no').eq('class_id',classId).order('room_no')),
+   query(client.from('class_delegates').select('student_id,duty,enabled,permissions').eq('class_id',classId)),
+   client.from('class_seat_settings').select('seat_rows,seat_cols,ordering,start_corner,podium').eq('class_id',classId).maybeSingle()
+  ]);
+  const field=(r,fallback)=>r.status==='fulfilled'?{data:r.value,error:null}:{data:fallback,error:'本模块暂时无法读取'};
+  const students=field(studentRes,[]);
+  const rooms=field(roomRes,[]);
+  const delegates=field(delegateRes,[]);
+  const seat=seatRes.status==='fulfilled'&& !seatRes.value.error?{data:seatRes.value.data,error:null}:{data:null,error:'座位配置暂时无法读取'};
+  let beds={data:[],error:null};
+  if(rooms.error){beds={data:[],error:'宿舍房间不可用'}}
+  else if(rooms.data.length>100){beds={data:[],error:'宿舍数量超过查询上限'}}
+  else if(rooms.data.length){
+   try{beds={data:await query(client.from('dorm_beds').select('room_id,bed_no,student_id').in('room_id',rooms.data.map(r=>r.id)).order('bed_no')),error:null}}
+   catch{beds={data:[],error:'床位信息暂时无法读取'}}
+  }
+  return {students,rooms,beds,delegates,seat};
+ }
+
  const DOSSIER_TABLES=Object.freeze({
   '考勤':{table:'attendance',fields:'id,on_date,status,note,created_at',order:'on_date'},
   '请假':{table:'leave_requests',fields:'id,start_on,end_on,category,status,reason,created_at',order:'start_on'},
@@ -99,5 +123,5 @@ export function createReadOnlyBridge(client){
   }));
   return {student,sections:Object.fromEntries(results)};
  }
- return Object.freeze({user,ownedClasses,authorizedClasses,studentsForOwner,submissionsForOwner,mySubmissions,pendingCountForOwner,auditForOwner,dossierForOwner,dossierPageForOwner,classRecordsForOwner});
+ return Object.freeze({user,ownedClasses,authorizedClasses,studentsForOwner,submissionsForOwner,mySubmissions,pendingCountForOwner,auditForOwner,dossierForOwner,dossierPageForOwner,classRecordsForOwner,classOrganizationForOwner});
 }
