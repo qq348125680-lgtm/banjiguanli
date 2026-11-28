@@ -40,6 +40,23 @@ export function createReadOnlyBridge(client){
   if(error)throw error;return {items:data??[],count:count??null,page,pageSize};
  }
 
+ /** Only a class owner may resolve a delegate's UID to their CURRENT class student name.
+  * Never infer names from email or from a different class.
+  */
+ async function cadreDirectoryForOwner(classId){
+  assertUuid(classId);await verifyOwner(classId);
+  const roster=await studentsForOwner(classId);
+  const byStudentId=new Map(roster.map(s=>[s.id,s.name]));
+  const delegates=await query(client.from('class_delegates')
+   .select('user_id,student_id,duty,enabled')
+   .eq('class_id',classId).order('duty').limit(200));
+  return delegates.map(d=>({
+   uid:d.user_id,
+   name:d.student_id?byStudentId.get(d.student_id)??null:null,
+   duty:d.duty??'班干部',
+   enabled:d.enabled===true
+  }));
+ }
  /** Read existing class points rules, preserving rule meanings and disabled flags. */
  async function pointRulesForOwner(classId){
   assertUuid(classId);await verifyOwner(classId);
@@ -134,5 +151,5 @@ export function createReadOnlyBridge(client){
   }));
   return {student,sections:Object.fromEntries(results)};
  }
- return Object.freeze({user,ownedClasses,authorizedClasses,studentsForOwner,submissionsForOwner,mySubmissions,pendingCountForOwner,auditForOwner,dossierForOwner,dossierPageForOwner,classRecordsForOwner,classOrganizationForOwner,pointRulesForOwner});
+ return Object.freeze({user,ownedClasses,authorizedClasses,studentsForOwner,submissionsForOwner,mySubmissions,pendingCountForOwner,auditForOwner,dossierForOwner,dossierPageForOwner,classRecordsForOwner,classOrganizationForOwner,pointRulesForOwner,cadreDirectoryForOwner});
 }
