@@ -20,6 +20,7 @@ import {decideSnapshot,reconcileAuthorization,canReadAuthorizedScope,shouldReval
 import {decideQuerySnapshot} from './lib/query-snapshot.mjs';
 import {createAuthBootstrapGate} from './lib/auth-bootstrap.mjs';
 import {invalidateSelectedClass} from './lib/authorization-race.mjs';
+import {decideReadFailure} from './lib/read-failure-policy.mjs';
 
 type View='dashboard'|'students'|'entry'|'review'|'records'|'reports'|'archive';
 const nav:[View,string,typeof LayoutDashboard][]=[['dashboard','工作台',LayoutDashboard],['students','学生中心',Users],['entry','班级事务',ClipboardList],['review','审核中心',ClipboardCheck],['records','班务记录',BookOpen],['reports','数据分析',ShieldCheck],['archive','工作档案',Archive]];
@@ -126,14 +127,33 @@ export default function App(){
    try {
      const result=await loadScopedPanels({owned,view,reader:bridges.reader,writer:bridges.writer,classId,page,pageSize,filter,sanitizeList});
      if(sequence!==requestSeq.current)return;
+     const recovery=decideReadFailure(result,{owned,view});
+     if(recovery.blockClass){
+       // RLS revocation or a failed roster refresh must unmount private child snapshots.
+       loadedScopeRef.current='';setAuthorizationBlocked(true);
+       setStudents([]);setRoster([]);setRosterLoaded(false);setItems([]);setTotal(null);
+       setPendingCount(null);setAudits([]);setAuditTotal(null);setDossierId('');
+       setSubmittedSession([]);setReviewNotes({});setSelected('');setFeedback('');
+       setProblem('学生名单读取失败；已隐藏班级数据并暂停业务操作，请重新验证班级授权。');
+       return;
+     }
      if(result.roster.ok){setStudents(result.roster.value);setRoster(result.roster.value);setRosterLoaded(true)}
-     if(result.reviews.ok){setItems(result.reviews.value.items);setTotal(result.reviews.value.count)}
-     if(result.pending.ok)setPendingCount(result.pending.value);
-     if(result.audit.ok){setAudits(result.audit.value?.items??[]);setAuditTotal(result.audit.value?.count??null)}
-     const labels:{[key:string]:string}={roster:'学生名单',reviews:'审核记录',pending:'待审核数量',audit:'操作日志'};
-     const errors=Object.entries(result as Record<string,{ok:boolean}>).filter(([key,item])=>!item.ok&&(key==='roster'||key==='reviews'||(key==='pending'&&owned)||(key==='audit'&&owned&&view==='archive')));
-     if(errors.length)setProblem(errors.map(([key])=>`${labels[key]}读取失败`).join('、')+'；同查询条件刷新时保留上次成功记录（可能已过期），切换页码或筛选条件不沿用旧记录，请重试或到旧版核对。');
-   }catch(e){if(sequence===requestSeq.current)setProblem(displayError(e));}
+     if(recovery.clearReviews){setItems([]);setTotal(null)}
+     else if(result.reviews.ok){setItems(result.reviews.value.items);setTotal(result.reviews.value.count)}
+     if(recovery.clearPending)setPendingCount(null);
+     else if(result.pending.ok)setPendingCount(result.pending.value);
+     if(recovery.clearAudit){setAudits([]);setAuditTotal(null)}
+     else if(result.audit.ok){setAudits(result.audit.value?.items??[]);setAuditTotal(result.audit.value?.count??null)}
+     if(recovery.failedNames.length)setProblem(recovery.failedNames.join('、')+'读取失败；已清除失败模块的上次结果，请重新验证权限或稍后重试。');
+   }catch(e){
+     if(sequence===requestSeq.current){
+       loadedScopeRef.current='';setAuthorizationBlocked(true);
+       setStudents([]);setRoster([]);setRosterLoaded(false);setItems([]);setTotal(null);
+       setPendingCount(null);setAudits([]);setAuditTotal(null);setDossierId('');
+       setSubmittedSession([]);setReviewNotes({});setSelected('');setFeedback('');
+       setProblem('数据读取异常，已清除旧班级信息并暂停操作，请重新验证授权：'+displayError(e));
+     }
+   }
    finally{if(sequence===requestSeq.current)setLoading(false)}
  },[bridges,user,classId,owned,page,pageSize,filter,view,authorizationBlocked,authorizationChecking,authorizedClassIds]);
  useEffect(()=>{void loadData()},[loadData]);
