@@ -452,7 +452,7 @@ export default function App(){
    <button type="button" className={recordTab==='rules'?'active':''} aria-pressed={recordTab==='rules'} onClick={()=>setRecordTab('rules')}>积分与违纪规则</button><button type="button" className={recordTab==='events'?'active':''} aria-pressed={recordTab==='events'} onClick={()=>setRecordTab('events')}>事件中心</button></div>
    {recordTab==='activity'&&<ClassRecordsPanel key={`${user.id}:${classId}:${recordFocusKind}`} load={fetchClassRecords} initialKind={recordFocusKind}/>}
    {recordTab==='events'&&<EventCenterPanel key={`${user.id}:${classId}:events`} load={fetchEventFeed} owned={owned} onStudent={openEventStudent} onRecord={openEventRecord}/>} 
-   {recordTab==='rules'&&<PointRulesPanel key={`${user.id}:${classId}`} load={fetchPointRules}/>}</>)
+   {recordTab==='rules'&&<PointRulesPanel key={`${user.id}:${classId}`} load={fetchPointRules}/>}</>)}
   {view==='archive'&&owned&&<AuditPanel audits={audits} total={auditTotal} page={page} pageSize={pageSize} loading={loading} setPage={setPage} setPageSize={setPageSize}/>}
  {view==='reports'&&<ReportsPanel items={items} rosterCount={students.length} rosterLoaded={rosterLoaded} pendingCount={pendingCount} owned={owned} total={total} loading={loading} onReview={()=>selectView('review')}/>}
   {view==='archive'&&!owned&&<section className="panel placeholder"><div className="placeholder-icon">✧</div><h2>工作档案</h2><p>当前身份无法读取全班操作记录。正式归档功能仍使用旧版系统。</p><Button onClick={()=>selectView('dashboard')} secondary>返回工作台</Button></section>}
