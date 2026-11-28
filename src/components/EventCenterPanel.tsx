@@ -4,11 +4,11 @@ import {CLASS_RECORD_KINDS} from '../lib/class-records.mjs';
 
 type EventItem={
  key:string;sourceId:string;kind:string;studentId:string;studentName:string;
- date:string;summary:string;stateLabel:string;needsFollowUp:boolean;nextAction:string;source:string;
+ date:string;summary:string;stateLabel:string;needsFollowUp:boolean;nextAction:string;source:string;linkedCaseId?:string|null;
 };
-type Feed={events:EventItem[];failedKinds:string[];limited:boolean};
-type Props={load:()=>Promise<Feed>;owned:boolean;onStudent:(id:string)=>void;onRecord:(kind:string)=>void;onCreateCase?:(studentId:string,kind:string,summary:string)=>void;onRelations?:(id:string)=>void;focusStudentId?:string;onClearFocus?:()=>void};
-export function EventCenterPanel({load,owned,onStudent,onRecord,onCreateCase,onRelations,focusStudentId='',onClearFocus}:Props){
+type Feed={events:EventItem[];failedKinds:string[];limited:boolean;linksAvailable?:boolean};
+type Props={load:()=>Promise<Feed>;owned:boolean;onStudent:(id:string)=>void;onRecord:(kind:string)=>void;onCreateCase?:(studentId:string,kind:string,summary:string,sourceRecordId:string)=>void;onOpenCase?:(caseId:string)=>void;onRelations?:(id:string)=>void;focusStudentId?:string;onClearFocus?:()=>void};
+export function EventCenterPanel({load,owned,onStudent,onRecord,onCreateCase,onOpenCase,onRelations,focusStudentId='',onClearFocus}:Props){
  const [feed,setFeed]=useState<Feed|null>(null);
  const [kind,setKind]=useState('全部'),[scope,setScope]=useState('全部'),[search,setSearch]=useState('');
  const [page,setPage]=useState(1),[revision,setRevision]=useState(0);
@@ -49,6 +49,7 @@ export function EventCenterPanel({load,owned,onStudent,onRecord,onCreateCase,onR
    <button type="button" className="record-refresh" disabled={busy} onClick={()=>setRevision(v=>v+1)}>刷新</button>
   </div>
   {feed?.failedKinds.length? <p role="status" className="notice error">部分事件类别未读取成功：{feed.failedKinds.join('、')}。当前仅展示已读取的记录，不能当作全班完整统计。</p>:null}
+  {owned&&feed?.linksAvailable===false&&<p className="notice error" role="status">原始记录与工单的关联查询不可用。本次仍可查看班务事件，但无法准确判定哪些已创建工单，因此暂不提供从原记录新建跟进工单。</p>}
   {error&&<p role="alert" className="notice error">{error}</p>}
   <div className="event-list">
    {pageItems.map(item=><article className="event-row" key={item.key}>
@@ -56,7 +57,8 @@ export function EventCenterPanel({load,owned,onStudent,onRecord,onCreateCase,onR
     <p>{item.summary}</p>
     <div className="event-row-next"><span>建议下一步：{item.nextAction}</span>
      <div>{owned&&<button type="button" className="record-refresh" onClick={()=>onStudent(item.studentId)}>学生档案</button>}
-      {owned&&onCreateCase&&<button type="button" className="record-refresh" onClick={()=>onCreateCase(item.studentId,item.kind,item.summary)}>发起跟进工单</button>}
+      {owned&&item.linkedCaseId&&onOpenCase&&<button type="button" className="record-refresh" onClick={()=>onOpenCase(item.linkedCaseId!)}>查看已关联工单</button>}
+      {owned&&!item.linkedCaseId&&feed?.linksAvailable===true&&onCreateCase&&<button type="button" className="record-refresh" onClick={()=>onCreateCase(item.studentId,item.kind,item.summary,item.sourceId)}>发起跟进工单</button>}
       {owned&&onRelations&&<button type="button" className="record-refresh" onClick={()=>onRelations(item.studentId)}>关联用户</button>}
       {owned&&<button type="button" className="record-refresh" onClick={()=>onRecord(item.kind)}>查看原始记录</button>}
      </div>
@@ -65,6 +67,6 @@ export function EventCenterPanel({load,owned,onStudent,onRecord,onCreateCase,onR
   </div>
   {!busy&&!error&&feed&&visible.length===0&&<div className="preview-empty">当前筛选下没有可见事件。请调整筛选条件，或返回业务记录核对。</div>}
   {visible.length>10&&<nav className="record-pagination" aria-label="事件列表分页"><button type="button" disabled={page<=1} onClick={()=>setPage(v=>Math.max(1,v-1))}>上一页</button><span>第 {page} / {pages} 页</span><button type="button" disabled={page>=pages} onClick={()=>setPage(v=>v+1)}>下一页</button></nav>}
-  <p className="muted">这里是既有业务记录的事件视图（每类最多展示最近 20 条），不代表完整历史或独立创建的事件。待跟进是状态提示，不会自动判定结案；家校沟通内容不在此展示。</p>
+  <p className="muted">六类原始班务记录每类最多展示最近 20 条；已关联记录可直达其事件工单，没有关联时可发起一个由服务器验证原始编号的新工单。待跟进是状态提示，不等于已经结案；家校沟通详情不在此展示。</p>
  </section>;
 }
