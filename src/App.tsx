@@ -3,7 +3,7 @@ import {LayoutDashboard,Users,ClipboardCheck,ClipboardList,ShieldCheck,Archive,L
 import type {User} from '@supabase/supabase-js';
 import {client,configured,writesEnabled} from './lib/client';
 import {getBridges,type ClassItem,type DelegateItem,type Submission,type StudentItem,type AuditItem,type DossierPage} from './lib/bridge';
-import {displayError,sanitizeList,dateToday,pendingLabel,canSubmitAsDelegate,canSubmitToRoster,canReviewSubmission,isValidDate} from './lib/domain.mjs';
+import {displayError,sanitizeList,dateToday,pendingLabel,canSubmitAsDelegate,canSubmitToRoster,canReviewSubmission,isValidDate,uncertainWriteOutcome} from './lib/domain.mjs';
 import {Message,Button} from './components/Common';
 import {StudentsPanel} from './components/StudentsPanel';
 import {SafePreviewWorkspace} from './components/SafePreviewWorkspace';
@@ -49,6 +49,7 @@ export default function App(){
  const latestRefreshRef=useRef<()=>Promise<void>>(async()=>{});
  const scopeRef=useRef('');scopeRef.current=`${user?.id??''}:${classId}:${day}`;
  const [reviewNotes,setReviewNotes]=useState<Record<string,string>>({}),[busyId,setBusyId]=useState('');
+ const [uncertainSubmit,setUncertainSubmit]=useState<{accountId:string;classId:string;day:string;studentId:string}|null>(null);
  const [dossierId,setDossierId]=useState('');
  const [studentTab,setStudentTab]=useState<'roster'|'organization'>('roster');
  const [recordTab,setRecordTab]=useState<'activity'|'rules'>('activity');
@@ -113,7 +114,7 @@ export default function App(){
    requestSeq.current++;authorizationSeq.current++;loadedScopeRef.current='';
    setAuthorizationBlocked(false);setClasses([]);setDelegated([]);setClassId('');setStudents([]);setRoster([]);setRosterLoaded(false);
    setItems([]);setTotal(null);setAudits([]);setAuditTotal(null);setPendingCount(null);
-   setDossierId('');setReviewNotes({});setSubmittedSession([]);setSelected('');
+   setDossierId('');setReviewNotes({});setSubmittedSession([]);setSelected('');setUncertainSubmit(null);
    setFeedback('');setProblem('');setPage(1);setLoading(false);
   }
   if(user){void loadClasses()}
@@ -232,12 +233,56 @@ export default function App(){
  },[user?.id]);
  async function login(){if(!client)return;setAuthBusy(true);setProblem('');try{const {error}=await client.auth.signInWithPassword({email:email.trim(),password});if(error)throw error;setPassword('')}catch(e){setProblem(displayError(e))}finally{setAuthBusy(false)}}
  async function logout(){await client?.auth.signOut()}
- async function submit(){if(!bridges||!canSubmit||!canSubmitToRoster({roster,studentId:selected,classId,owned})||!isValidDate(day)||submittedSession.includes(selected)||operationLock.current)return;operationLock.current=true;const operationScope=scopeRef.current;setBusyId('submit');setProblem('');setFeedback('');try{await bridges.writer.submit({classId,studentId:selected,entryType:'考勤',date:day,status:attendance,note});if(scopeRef.current===operationScope){setNote('');setPage(1);setSubmittedSession(prev=>markSubmissionConfirmed(prev,selected));setSelected(nextOutstanding(roster,[...submittedSession,selected],selected));await loadData();if(scopeRef.current===operationScope)setFeedback('本次申请已提交待审核，尚未计入正式考勤。')}}catch(e){if(scopeRef.current===operationScope)setProblem(displayError(e))}finally{operationLock.current=false;setBusyId('')}}
+ async function submit(){
+  if(!bridges||!canSubmit||!canSubmitToRoster({roster,studentId:selected,classId,owned})||!isValidDate(day)||submittedSession.includes(selected)||operationLock.current)return;
+  if(uncertainSubmit&&uncertainSubmit.accountId===user?.id&&uncertainSubmit.classId===classId&&uncertainSubmit.day===day&&uncertainSubmit.studentId===selected){
+   setProblem('该学生本日有尚未核实的提交结果。请先点击「核对提交结果」，不要重复提交。');return;
+  }
+  operationLock.current=true;
+  const operationScope=scopeRef.current, submittedStudent=selected, submittedDay=day, submittedClass=classId, submittedAccount=user!.id;
+  setBusyId('submit');setProblem('');setFeedback('');
+  try{
+   await bridges.writer.submit({classId:submittedClass,studentId:submittedStudent,entryType:'考勤',date:submittedDay,status:attendance,note});
+   if(scopeRef.current===operationScope){
+    setUncertainSubmit(null);setNote('');setPage(1);
+    setSubmittedSession(prev=>markSubmissionConfirmed(prev,submittedStudent));
+    setSelected(nextOutstanding(roster,[...submittedSession,submittedStudent],submittedStudent));
+    await loadData();
+    if(scopeRef.current===operationScope)setFeedback('申请已提交待审核，尚未计入正式考勤。');
+   }
+  }catch(e){
+   if(scopeRef.current===operationScope){
+    if(uncertainWriteOutcome(e)){
+     setUncertainSubmit({accountId:submittedAccount,classId:submittedClass,day:submittedDay,studentId:submittedStudent});
+     setProblem('提交结果暂时无法确认：服务器可能已保存申请。已锁定此学生本日重复提交，请先核对「我的提交记录」。');
+    }else setProblem(displayError(e));
+   }
+  }finally{operationLock.current=false;setBusyId('')}
+ }
+ async function reconcileUncertainSubmission(){
+  if(!uncertainSubmit||!bridges||!user||operationLock.current||authorizationBlocked||authorizationChecking)return;
+  const pending=uncertainSubmit;
+  if(pending.accountId!==user.id||pending.classId!==classId||pending.day!==day)return;
+  operationLock.current=true;setBusyId('verify');setProblem('');setFeedback('');
+  try{
+   const records=await withReadDeadline(()=>bridges.writer.verifySubmission({classId:pending.classId,studentId:pending.studentId,date:pending.day}));
+   if(scopeRef.current!==`${pending.accountId}:${pending.classId}:${pending.day}`)return;
+   if(records.length){
+    setSubmittedSession(prev=>markSubmissionConfirmed(prev,pending.studentId));
+    setUncertainSubmit(null);
+    setFeedback('已在服务器查询到该学生本日的考勤申请；请到「我的提交记录」核对状态，不要再次提交。');
+    await loadData();
+   }else setProblem('未查到可见申请，但仍无法证明之前的写入未发生。为避免重复，当前页面继续锁定本次提交，请从旧版核实后再操作。');
+  }catch(e){
+   if(scopeRef.current===`${pending.accountId}:${pending.classId}:${pending.day}`)
+    setProblem('核对失败，继续禁止重复提交。请检查网络或使用旧版核实：'+displayError(e));
+  }finally{operationLock.current=false;setBusyId('')}
+ }
  async function review(id:string,action:'approve'|'reject'){if(!bridges||!canWrite||!owned||!canReviewSubmission(items,id,action)||operationLock.current)return;operationLock.current=true;const operationScope=scopeRef.current;setBusyId(id);setProblem('');setFeedback('');try{await bridges.writer.review(id,action,reviewNotes[id]??'');if(scopeRef.current===operationScope){await loadData();if(scopeRef.current===operationScope)setFeedback(action==='approve'?'审核已通过，服务端事务已返回结果。':'已驳回，并保留审核原因。')}}catch(e){if(scopeRef.current===operationScope)setProblem(displayError(e))}finally{operationLock.current=false;setBusyId('')}}
  const names=useMemo(()=>new Map(roster.map(s=>[s.id,s.name])),[roster]);
 
  // Page count is now owned by ReviewPanel.
- useEffect(()=>{setSubmittedSession([]);setSelected('')},[classId,day,user?.id]);
+ useEffect(()=>{setSubmittedSession([]);setSelected('');setUncertainSubmit(null)},[classId,day,user?.id]);
  function selectView(next:View){requestSeq.current++;setDossierId('');setView(next);setPage(1);setMobile(false);setFeedback('')}
  const accountSnapshotPending=activeAccountId.current!==(user?.id??'');
  if(accountSnapshotPending)return <div className="auth-shell"><section className="auth-card"><h1>正在切换登录身份</h1><p>旧账号数据已暂时隐藏，正在重新确认当前账号的班级授权。</p></section></div>;
@@ -260,7 +305,7 @@ export default function App(){
    {(!owned||studentTab==='roster')&&<><StudentsPanel students={students} search={search} onSearch={setSearch} loading={loading} onSelect={owned?setDossierId:undefined} selectedId={dossierId}/>{owned&&dossierId&&<StudentDossierPanel student={students.find(st=>st.id===dossierId)} fetchPage={fetchDossierPage} onClose={()=>setDossierId('')}/>}</>}
    {owned&&studentTab==='organization'&&<ClassOrganizationPanel key={`${user.id}:${classId}`} load={fetchClassOrganization}/>}
   </>}
- {view==='entry'&&<AttendanceEntryPanel roster={roster} completed={submittedSession} selected={selected} setSelected={setSelected} loading={loading} busy={Boolean(busyId)} day={day} setDay={setDay} attendance={attendance} setAttendance={setAttendance} note={note} setNote={setNote} classId={classId} owned={owned} canSubmit={canSubmit} submit={()=>void submit()}/> }
+ {view==='entry'&&<AttendanceEntryPanel roster={roster} completed={submittedSession} uncertainStudentId={uncertainSubmit?.accountId===user.id&&uncertainSubmit?.classId===classId&&uncertainSubmit?.day===day?uncertainSubmit.studentId:null} verifyUncertain={()=>void reconcileUncertainSubmission()} selected={selected} setSelected={setSelected} loading={loading} busy={Boolean(busyId)} day={day} setDay={setDay} attendance={attendance} setAttendance={setAttendance} note={note} setNote={setNote} classId={classId} owned={owned} canSubmit={canSubmit} submit={()=>void submit()}/> }
  {view==='review'&&<ReviewPanel owned={owned} items={items} names={names} total={total} page={page} pageSize={pageSize} filter={filter} loading={loading} busy={Boolean(busyId)} cadreDirectory={cadreDirectory} canWrite={canWrite} notes={reviewNotes} setNotes={setReviewNotes} setFilter={setFilter} setPage={setPage} setPageSize={setPageSize} review={(id,action)=>void review(id,action)}/> }
  {view==='records'&&(owned?<><div className="student-center-tabs" role="group" aria-label="班务记录子模块">
    <button type="button" className={recordTab==='activity'?'active':''} aria-pressed={recordTab==='activity'} onClick={()=>setRecordTab('activity')}>业务记录</button>
