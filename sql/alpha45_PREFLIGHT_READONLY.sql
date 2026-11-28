@@ -41,13 +41,13 @@ select 'class_delegates_enabled_exists',exists(
 )
 order by check_name;
 
--- Aggregate-only check: pending duplicate groups must be ZERO before installing
+-- Aggregate-only check: duplicate pending ATTENDANCE groups must be ZERO before installing
 -- the partial unique index. No student identity leaves the database.
 select count(*)::integer as duplicate_pending_groups
 from (
  select class_id,student_id,entry_type,occurred_on
- from public.cadre_submissions where status='待审核'
- group by class_id,student_id,entry_type,occurred_on having count(*)>1
+ from public.cadre_submissions where status='待审核' and entry_type='考勤'
+ group by class_id,student_id,occurred_on having count(*)>1
 ) duplicate_groups;
 
 -- Post-migration checks: expect true ONLY after staging migration.
