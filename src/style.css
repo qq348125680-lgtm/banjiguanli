@@ -123,3 +123,17 @@
 .duty-ranking summary{font-size:13px;cursor:pointer;color:#5066a2}
 .duty-ranking p{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #e9edf5;padding:8px 3px;margin:0}
 @media(max-width:700px){.duty-advisor{padding:13px}.duty-form{grid-template-columns:1fr}.duty-form button{min-height:44px}.duty-ranking p{font-size:12px}}
+
+/* Alpha41: visible-page weekly attendance review, never overwrites absences. */
+.attendance-digest{border:1px solid #dce6f5;background:#f8faff;border-radius:14px;padding:18px;margin:19px 0}
+.attendance-digest h3{font-size:15px;margin:0 0 9px;color:#384c75}
+.attendance-digest>label{display:flex;align-items:center;gap:10px;color:#61718a;font-size:12px;margin:12px 0}
+.attendance-digest>label select{width:min(100%,330px)}
+.digest-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:13px 0}
+.digest-summary span{display:flex;flex-direction:column;gap:6px;padding:11px;border-radius:9px;background:#fff;color:#667a9d;font-size:12px;border:1px solid #e8eef8}
+.digest-summary strong{font-size:22px;color:#465b96}
+.digest-students{display:grid;gap:7px;margin:15px 0}
+.digest-students article{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px;background:#fff;border:1px solid #e9edf5;border-radius:9px;font-size:12px}
+.digest-students strong{color:#425779}
+@media(max-width:850px){.digest-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.digest-students article{flex-wrap:wrap;gap:5px}}
+@media(max-width:700px){.attendance-digest{padding:12px}.attendance-digest>label{align-items:stretch;flex-direction:column}.attendance-digest>label select{width:100%}}
