@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {CLASS_RECORDS,CLASS_RECORD_KINDS,validateRecordPage,describeClassRecord} from '../src/lib/class-records.mjs';
+import {CLASS_RECORDS,CLASS_RECORD_KINDS,validateRecordPage,validateRecordDates,describeClassRecord,escapeCsvCell,exportRecordPageCsv} from '../src/lib/class-records.mjs';
 import {createReadOnlyBridge} from '../src/lib/supabase-readonly-adapter.mjs';
 const owner='11111111-1111-4111-8111-111111111111';
 const classId='22222222-2222-4222-8222-222222222222';
@@ -21,6 +21,8 @@ function mockedClient({owned=true,student=true}={}){
    eq(key,value){state.ops.push(['eq',key,value]);return q},
    is(key,value){state.ops.push(['is',key,value]);return q},
    in(key,value){state.ops.push(['in',key,value]);return q},
+   gte(key,value){state.ops.push(['gte',key,value]);return q},
+   lte(key,value){state.ops.push(['lte',key,value]);return q},
    order(key,opts){state.ops.push(['order',key]);return q},
    range(a,b){state.ops.push(['range',a,b]);return q},
    then(resolve,reject){
@@ -77,4 +79,34 @@ test('Alpha40 page never fabricates missing fields or reveals family identity co
  assert.match(panel,/仅班主任/);
  assert.match(panel,/seq.current\+\+/);
  assert.doesNotMatch(panel,/\.insert\(|\.update\(|\.delete\(/);
+});
+
+test('Alpha40 date filters only accept real ISO dates in increasing order',()=>{
+ assert.deepEqual(validateRecordDates('2026-11-01','2026-11-30'),{startOn:'2026-11-01',endOn:'2026-11-30'});
+ assert.throws(()=>validateRecordDates('2026-02-30',''));
+ assert.throws(()=>validateRecordDates('2026-12-01','2026-11-30'));
+});
+test('Alpha40 owner reader binds date range and selected student safely',async()=>{
+ const {client,calls}=mockedClient();const bridge=createReadOnlyBridge(client);
+ await bridge.classRecordsForOwner(classId,'请假',{page:1,pageSize:5,studentId,startOn:'2026-11-01',endOn:'2026-11-30'});
+ const q=calls.find(x=>x.table==='leave_requests');
+ assert.ok(q.ops.some(([op,key,val])=>op==='gte'&&key==='start_on'&&val==='2026-11-01'));
+ assert.ok(q.ops.some(([op,key,val])=>op==='lte'&&key==='start_on'&&val==='2026-11-30'));
+ await assert.rejects(()=>bridge.classRecordsForOwner(classId,'请假',{page:1,pageSize:5,studentId:'99999999-9999-4999-8999-999999999999'}));
+});
+test('Alpha40 CSV protects spreadsheet formulas and refuses family contact export',()=>{
+ const cell=escapeCsvCell('=HYPERLINK("https://example.com")');
+ assert.ok(cell.startsWith('"\'='));
+ const csv=exportRecordPageCsv('违纪',[{id:'i',student_id:studentId,happened_on:'2026-11-20',category:'课堂',description:'=1+1',points:-2}],[{id:studentId,name:'学生甲'}]);
+ assert.ok(csv.charCodeAt(0)===0xFEFF);
+ assert.match(csv,/学生甲/);
+ assert.match(csv,/'=1\+1/);
+ assert.throws(()=>exportRecordPageCsv('家校沟通',[],[]));
+});
+test('Alpha40 record UI confines export to loaded page and blocks family export',()=>{
+ const source=readFileSync(new URL('../src/components/ClassRecordsPanel.tsx',import.meta.url),'utf8');
+ assert.match(source,/kind==='家校沟通'/);
+ assert.match(source,/exportRecordPageCsv\(kind,result.items,result.students\)/);
+ assert.match(source,/queryKey=/);
+ assert.match(source,/按学生筛选班务记录/);
 });
