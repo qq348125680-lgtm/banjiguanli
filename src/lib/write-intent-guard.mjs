@@ -1,4 +1,5 @@
 import {loadPendingMarker,savePendingMarker,clearPendingMarker,pendingMarkerKey} from './pending-write-marker.mjs';
+import {inspectPendingMarker} from './pending-marker-index.mjs';
 
 /** Persist an intent BEFORE starting a remote write. Missing browser storage
  * must fail closed rather than risk losing the recovery marker on refresh.
@@ -23,7 +24,9 @@ export function beginWriteIntent(storage,kind,scope,id){
 
 /** Clear only a definitively settled intent and never remove a newer one. */
 export function finishKnownWrite(storage,kind,scope,id){
- if(loadPendingMarker(storage,kind,scope)!==id)return false;
+ // A 30-day-old marker may still be verified read-only. Its UUID must match
+ // the original intent before deletion; age alone must never make it unblockable.
+ if(inspectPendingMarker(storage,kind,scope).id!==id)return false;
  return clearPendingMarker(storage,kind,scope);
 }
 
