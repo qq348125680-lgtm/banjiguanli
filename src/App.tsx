@@ -242,7 +242,7 @@ export default function App(){
  async function logout(){await client?.auth.signOut()}
  async function submit(){
   if(!bridges||!canSubmit||!canSubmitToRoster({roster,studentId:selected,classId,owned})||!isValidDate(day)||submittedSession.includes(selected)||operationLock.current)return;
-  if(uncertainSubmit&&uncertainSubmit.accountId===user?.id&&uncertainSubmit.classId===classId&&uncertainSubmit.day===day&&uncertainSubmit.studentId===selected){
+  if(uncertainSubmit&&uncertainSubmit.accountId===user?.id&&uncertainSubmit.classId===classId&&uncertainSubmit.day===day&&true){
    setProblem('该学生本日有尚未核实的提交结果。请先点击「核对提交结果」，不要重复提交。');return;
   }
   operationLock.current=true;
@@ -263,7 +263,7 @@ export default function App(){
     if(uncertainWriteOutcome(e)){
      savePendingMarker(browserSessionStorage(),'submit',{accountId:submittedAccount,classId:submittedClass,day:submittedDay},submittedStudent);
      setUncertainSubmit({accountId:submittedAccount,classId:submittedClass,day:submittedDay,studentId:submittedStudent});
-     setProblem('提交结果暂时无法确认：服务器可能已保存申请。已锁定此学生本日重复提交，请先核对「我的提交记录」。');
+     setProblem('提交结果暂时无法确认：服务器可能已保存申请。已暂停本班本日后续考勤提交，请先核对「我的提交记录」。');
     }else setProblem(displayError(e));
    }
   }finally{operationLock.current=false;setBusyId('')}
@@ -290,7 +290,7 @@ export default function App(){
  }
  async function review(id:string,action:'approve'|'reject'){
   if(!bridges||!canWrite||!owned||!canReviewSubmission(items,id,action)||operationLock.current)return;
-  if(uncertainReview?.id===id&&uncertainReview.accountId===user?.id&&uncertainReview.classId===classId){
+  if(uncertainReview&&uncertainReview.accountId===user?.id&&uncertainReview.classId===classId){
    setProblem('该申请有尚未确认的审核结果，请先核对服务器状态，避免重复审核。');return;
   }
   operationLock.current=true;
@@ -308,7 +308,7 @@ export default function App(){
     if(uncertainWriteOutcome(e)){
      savePendingMarker(browserSessionStorage(),'review',{accountId:account,classId:submittedClass},id);
      setUncertainReview({accountId:account,classId:submittedClass,id});
-     setProblem('审核结果未知：可能已经完成数据库事务。已锁定此申请的重复审批，请先核对服务器状态。');
+     setProblem('审核结果未知：可能已经完成数据库事务。已暂停本班后续审核，请先核对服务器状态。');
     }else setProblem(displayError(e));
    }
   }finally{operationLock.current=false;setBusyId('')}
@@ -363,8 +363,8 @@ export default function App(){
    {(!owned||studentTab==='roster')&&<><StudentsPanel students={students} search={search} onSearch={setSearch} loading={loading} onSelect={owned?setDossierId:undefined} selectedId={dossierId}/>{owned&&dossierId&&<StudentDossierPanel student={students.find(st=>st.id===dossierId)} fetchPage={fetchDossierPage} onClose={()=>setDossierId('')}/>}</>}
    {owned&&studentTab==='organization'&&<ClassOrganizationPanel key={`${user.id}:${classId}`} load={fetchClassOrganization}/>}
   </>}
- {view==='entry'&&<AttendanceEntryPanel roster={roster} completed={submittedSession} uncertainStudentId={uncertainSubmit?.accountId===user.id&&uncertainSubmit?.classId===classId&&uncertainSubmit?.day===day?uncertainSubmit.studentId:null} verifyUncertain={()=>void reconcileUncertainSubmission()} selected={selected} setSelected={setSelected} loading={loading} busy={Boolean(busyId)} day={day} setDay={setDay} attendance={attendance} setAttendance={setAttendance} note={note} setNote={setNote} classId={classId} owned={owned} canSubmit={canSubmit} submit={()=>void submit()}/> }
- {view==='review'&&<ReviewPanel owned={owned} items={items} names={names} total={total} page={page} pageSize={pageSize} filter={filter} loading={loading} busy={Boolean(busyId)} cadreDirectory={cadreDirectory} uncertainReviewId={uncertainReview?.accountId===user.id&&uncertainReview?.classId===classId?uncertainReview.id:null} verifyReview={()=>void reconcileUncertainReview()} canWrite={canWrite} notes={reviewNotes} setNotes={setReviewNotes} setFilter={setFilter} setPage={setPage} setPageSize={setPageSize} review={(id,action)=>void review(id,action)}/> }
+ {view==='entry'&&<AttendanceEntryPanel roster={roster} completed={submittedSession} uncertainStudentId={uncertainSubmit?.accountId===user.id&&uncertainSubmit?.classId===classId&&uncertainSubmit?.day===day?uncertainSubmit.studentId:null} verifyUncertain={()=>void reconcileUncertainSubmission()} selected={selected} setSelected={setSelected} loading={loading} busy={Boolean(busyId)} day={day} setDay={setDay} attendance={attendance} setAttendance={setAttendance} note={note} setNote={setNote} classId={classId} owned={owned} canSubmit={canSubmit&&!Boolean(uncertainSubmit?.accountId===user.id&&uncertainSubmit?.classId===classId&&uncertainSubmit?.day===day)} submit={()=>void submit()}/> }
+ {view==='review'&&<ReviewPanel owned={owned} items={items} names={names} total={total} page={page} pageSize={pageSize} filter={filter} loading={loading} busy={Boolean(busyId)} cadreDirectory={cadreDirectory} uncertainReviewId={uncertainReview?.accountId===user.id&&uncertainReview?.classId===classId?uncertainReview.id:null} verifyReview={()=>void reconcileUncertainReview()} canWrite={canWrite&&!Boolean(uncertainReview?.accountId===user.id&&uncertainReview?.classId===classId)} notes={reviewNotes} setNotes={setReviewNotes} setFilter={setFilter} setPage={setPage} setPageSize={setPageSize} review={(id,action)=>void review(id,action)}/> }
  {view==='records'&&(owned?<><div className="student-center-tabs" role="group" aria-label="班务记录子模块">
    <button type="button" className={recordTab==='activity'?'active':''} aria-pressed={recordTab==='activity'} onClick={()=>setRecordTab('activity')}>业务记录</button>
    <button type="button" className={recordTab==='rules'?'active':''} aria-pressed={recordTab==='rules'} onClick={()=>setRecordTab('rules')}>积分与违纪规则</button></div>
