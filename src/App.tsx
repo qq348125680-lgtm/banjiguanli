@@ -56,9 +56,9 @@ export default function App(){
   if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking||!dossierId)throw new Error('当前无权读取档案');
   return bridges.reader.dossierPageForOwner(classId,dossierId,section,{page:targetPage,pageSize:targetPageSize});
  },[bridges,user,classId,owned,isAuthorizedClass,authorizationBlocked,authorizationChecking,dossierId]);
- const fetchClassRecords=useCallback(async(kind:string,targetPage:number,targetPageSize:number)=>{
+ const fetchClassRecords=useCallback(async(kind:string,targetPage:number,targetPageSize:number,filters:{studentId?:string;startOn?:string;endOn?:string})=>{
   if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking)throw Error('当前无权读取班级业务记录');
-  return bridges.reader.classRecordsForOwner(classId,kind,{page:targetPage,pageSize:targetPageSize});
+  return bridges.reader.classRecordsForOwner(classId,kind,{page:targetPage,pageSize:targetPageSize,...filters});
  },[bridges,user,classId,owned,isAuthorizedClass,authorizationBlocked,authorizationChecking]);
  const fetchClassOrganization=useCallback(async()=>{
   if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking)throw Error('当前无权查看班级组织信息');
