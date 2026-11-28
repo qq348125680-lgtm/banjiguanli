@@ -1,3 +1,4 @@
+import {withReadDeadline} from '../lib/read-deadline.mjs';
 import {useEffect,useRef,useState} from 'react';
 import {previewPointRule} from '../lib/point-rule-preview.mjs';
 type Rule={id:string;code:string;label:string;dimension:string;unit_points:number|string|null;threshold:number|null;converted_points:number|string|null;enabled:boolean;source_note:string|null};
@@ -7,7 +8,7 @@ export function PointRulesPanel({load}:{load:()=>Promise<Rule[]>}){
  const seq=useRef(0);
  useEffect(()=>{
   const id=++seq.current;setRules([]);setError('');setBusy(true);setOverrides({});setCounts({});
-  load().then(data=>{if(id===seq.current)setRules(data)}).catch(()=>{if(id===seq.current)setError('积分规则读取失败。未显示旧缓存，请重新验证班级授权。')}).finally(()=>{if(id===seq.current)setBusy(false)});
+  withReadDeadline(load).then(data=>{if(id===seq.current)setRules(data)}).catch(()=>{if(id===seq.current)setError('积分规则读取失败。未显示旧缓存，请重新验证班级授权。')}).finally(()=>{if(id===seq.current)setBusy(false)});
   return ()=>{seq.current++};
  },[load,refresh]);
  const filtered=rules.filter(r=>(showDisabled||r.enabled)&&[r.label,r.code,r.dimension].some(v=>String(v??'').includes(search.trim())));
