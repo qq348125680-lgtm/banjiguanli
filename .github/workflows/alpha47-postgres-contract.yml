@@ -10,6 +10,7 @@ on:
       - 'sql/v7_event_cases_STAGING_ONLY*.sql'
       - 'sql/v7_guardian_links_STAGING_ONLY*.sql'
       - 'sql/v7_case_source_links_STAGING_ONLY*.sql'
+      - 'sql/v7_case_deadlines_STAGING_ONLY*.sql'
       - 'sql/alpha45_STAGING_ONLY_ROLLBACK.sql'
       - 'sql/alpha45_PREFLIGHT_READONLY.sql'
       - 'tests/postgres/**'
@@ -63,6 +64,10 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f sql/v7_event_cases_STAGING_ONLY.sql
       - name: Verify event owner/delegate assignment, feedback, review, history and RLS
         run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/event-case-lifecycle.sql
+      - name: Apply owner-controlled deadlines and class workload summaries
+        run: psql -X -v ON_ERROR_STOP=1 -f sql/v7_case_deadlines_STAGING_ONLY.sql
+      - name: Verify deadline audit, expired cases and teacher-only class statistics
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/event-deadline-lifecycle.sql
       - name: Apply explicit family-contact relationships in disposable PostgreSQL only
         run: psql -X -v ON_ERROR_STOP=1 -f sql/v7_guardian_links_STAGING_ONLY.sql
       - name: Check teacher-only family contacts and verified/disabled state history
@@ -79,6 +84,8 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f sql/v7_case_source_links_STAGING_ONLY_ROLLBACK.sql
       - name: Remove only synthetic source fixtures and recheck attendance baseline
         run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/source-record-fixtures-cleanup.sql
+      - name: Roll back deadline extension without touching preexisting event cases
+        run: psql -X -v ON_ERROR_STOP=1 -f sql/v7_case_deadlines_STAGING_ONLY_ROLLBACK.sql
       - name: Roll back event case tables and RPCs without affecting existing data
         run: psql -X -v ON_ERROR_STOP=1 -f sql/v7_event_cases_STAGING_ONLY_ROLLBACK.sql
       - name: Roll back only added V7 database objects
