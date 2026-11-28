@@ -51,6 +51,7 @@ export default function App(){
  const scopeRef=useRef('');scopeRef.current=`${user?.id??''}:${classId}:${day}`;
  const [reviewNotes,setReviewNotes]=useState<Record<string,string>>({}),[busyId,setBusyId]=useState('');
  const [uncertainSubmit,setUncertainSubmit]=useState<{accountId:string;classId:string;day:string;studentId:string}|null>(null);
+ const [uncertainReview,setUncertainReview]=useState<{accountId:string;classId:string;id:string}|null>(null);
  const [dossierId,setDossierId]=useState('');
  const [studentTab,setStudentTab]=useState<'roster'|'organization'>('roster');
  const [recordTab,setRecordTab]=useState<'activity'|'rules'>('activity');
@@ -60,7 +61,7 @@ export default function App(){
  const authorizedClassIds=useMemo(()=>[...classes.map(c=>c.id),...delegated.map(d=>d.class_id)],[classes,delegated]);
  const isAuthorizedClass=Boolean(classId)&&authorizedClassIds.includes(classId);
  const owned=classes.some(c=>c.id===classId);
- useEffect(()=>{setDossierId('');setStudentTab('roster');setRecordTab('activity');setReviewNotes({});setBusyId('');setFeedback('')},[classId,user?.id]);
+ useEffect(()=>{setDossierId('');setStudentTab('roster');setRecordTab('activity');setReviewNotes({});setBusyId('');setUncertainReview(null);setFeedback('')},[classId,user?.id]);
  const fetchDossierPage=useCallback(async(section:'考勤'|'请假'|'违纪'|'积分'|'值日',targetPage:number,targetPageSize:number):Promise<DossierPage>=>{
   if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking||!dossierId)throw new Error('当前无权读取档案');
   return bridges.reader.dossierPageForOwner(classId,dossierId,section,{page:targetPage,pageSize:targetPageSize});
@@ -115,7 +116,7 @@ export default function App(){
    requestSeq.current++;authorizationSeq.current++;loadedScopeRef.current='';
    setAuthorizationBlocked(false);setClasses([]);setDelegated([]);setClassId('');setStudents([]);setRoster([]);setRosterLoaded(false);
    setItems([]);setTotal(null);setAudits([]);setAuditTotal(null);setPendingCount(null);
-   setDossierId('');setReviewNotes({});setSubmittedSession([]);setSelected('');setUncertainSubmit(null);
+   setDossierId('');setReviewNotes({});setSubmittedSession([]);setSelected('');setUncertainSubmit(null);setUncertainReview(null);
    setFeedback('');setProblem('');setPage(1);setLoading(false);
   }
   if(user){void loadClasses()}
@@ -279,7 +280,48 @@ export default function App(){
     setProblem('核对失败，继续禁止重复提交。请检查网络或使用旧版核实：'+displayError(e));
   }finally{operationLock.current=false;setBusyId('')}
  }
- async function review(id:string,action:'approve'|'reject'){if(!bridges||!canWrite||!owned||!canReviewSubmission(items,id,action)||operationLock.current)return;operationLock.current=true;const operationScope=scopeRef.current;setBusyId(id);setProblem('');setFeedback('');try{await bridges.writer.review(id,action,reviewNotes[id]??'');if(scopeRef.current===operationScope){await loadData();if(scopeRef.current===operationScope)setFeedback(action==='approve'?'审核已通过，服务端事务已返回结果。':'已驳回，并保留审核原因。')}}catch(e){if(scopeRef.current===operationScope)setProblem(displayError(e))}finally{operationLock.current=false;setBusyId('')}}
+ async function review(id:string,action:'approve'|'reject'){
+  if(!bridges||!canWrite||!owned||!canReviewSubmission(items,id,action)||operationLock.current)return;
+  if(uncertainReview?.id===id&&uncertainReview.accountId===user?.id&&uncertainReview.classId===classId){
+   setProblem('该申请有尚未确认的审核结果，请先核对服务器状态，避免重复审核。');return;
+  }
+  operationLock.current=true;
+  const account=user!.id, submittedClass=classId,operationScope=scopeRef.current;
+  setBusyId(id);setProblem('');setFeedback('');
+  try{
+   await withUncertainWriteDeadline(()=>bridges.writer.review(id,action,reviewNotes[id]??''));
+   if(scopeRef.current===operationScope){
+    setUncertainReview(null);await loadData();
+    if(scopeRef.current===operationScope)setFeedback(action==='approve'?'审核已通过，服务端事务已返回结果。':'已驳回，并保留审核原因。');
+   }
+  }catch(e){
+   if(scopeRef.current===operationScope){
+    if(uncertainWriteOutcome(e)){
+     setUncertainReview({accountId:account,classId:submittedClass,id});
+     setProblem('审核结果未知：可能已经完成数据库事务。已锁定此申请的重复审批，请先核对服务器状态。');
+    }else setProblem(displayError(e));
+   }
+  }finally{operationLock.current=false;setBusyId('')}
+ }
+ async function reconcileUncertainReview(){
+  if(!bridges||!user||!uncertainReview||operationLock.current||authorizationBlocked||authorizationChecking)return;
+  const pending=uncertainReview;
+  if(pending.accountId!==user.id||pending.classId!==classId)return;
+  operationLock.current=true;setBusyId('verify-review');setProblem('');setFeedback('');
+  try{
+   const record=await withReadDeadline(()=>bridges.writer.verifyReview({classId:pending.classId,submissionId:pending.id}));
+   if(activeAccountId.current!==pending.accountId||classId!==pending.classId)return;
+   if(record.status==='已通过'||record.status==='已驳回'){
+    setUncertainReview(null);
+    await loadData();
+    setFeedback('服务器已确认此申请状态：'+record.status+'。请核对实际记录，不要再次批准。');
+   }else{
+    setProblem('服务器目前仍显示待审核，可能存在未完成请求。为避免重复，暂不解锁此申请；请通过正式系统核实。');
+   }
+  }catch(e){
+   if(activeAccountId.current===pending.accountId&&classId===pending.classId)setProblem('审核结果核对失败，继续锁定重复审批：'+displayError(e));
+  }finally{operationLock.current=false;setBusyId('')}
+ }
  const names=useMemo(()=>new Map(roster.map(s=>[s.id,s.name])),[roster]);
 
  // Page count is now owned by ReviewPanel.
@@ -307,7 +349,7 @@ export default function App(){
    {owned&&studentTab==='organization'&&<ClassOrganizationPanel key={`${user.id}:${classId}`} load={fetchClassOrganization}/>}
   </>}
  {view==='entry'&&<AttendanceEntryPanel roster={roster} completed={submittedSession} uncertainStudentId={uncertainSubmit?.accountId===user.id&&uncertainSubmit?.classId===classId&&uncertainSubmit?.day===day?uncertainSubmit.studentId:null} verifyUncertain={()=>void reconcileUncertainSubmission()} selected={selected} setSelected={setSelected} loading={loading} busy={Boolean(busyId)} day={day} setDay={setDay} attendance={attendance} setAttendance={setAttendance} note={note} setNote={setNote} classId={classId} owned={owned} canSubmit={canSubmit} submit={()=>void submit()}/> }
- {view==='review'&&<ReviewPanel owned={owned} items={items} names={names} total={total} page={page} pageSize={pageSize} filter={filter} loading={loading} busy={Boolean(busyId)} cadreDirectory={cadreDirectory} canWrite={canWrite} notes={reviewNotes} setNotes={setReviewNotes} setFilter={setFilter} setPage={setPage} setPageSize={setPageSize} review={(id,action)=>void review(id,action)}/> }
+ {view==='review'&&<ReviewPanel owned={owned} items={items} names={names} total={total} page={page} pageSize={pageSize} filter={filter} loading={loading} busy={Boolean(busyId)} cadreDirectory={cadreDirectory} uncertainReviewId={uncertainReview?.accountId===user.id&&uncertainReview?.classId===classId?uncertainReview.id:null} verifyReview={()=>void reconcileUncertainReview()} canWrite={canWrite} notes={reviewNotes} setNotes={setReviewNotes} setFilter={setFilter} setPage={setPage} setPageSize={setPageSize} review={(id,action)=>void review(id,action)}/> }
  {view==='records'&&(owned?<><div className="student-center-tabs" role="group" aria-label="班务记录子模块">
    <button type="button" className={recordTab==='activity'?'active':''} aria-pressed={recordTab==='activity'} onClick={()=>setRecordTab('activity')}>业务记录</button>
    <button type="button" className={recordTab==='rules'?'active':''} aria-pressed={recordTab==='rules'} onClick={()=>setRecordTab('rules')}>积分与违纪规则</button></div>
