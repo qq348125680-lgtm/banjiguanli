@@ -7,10 +7,10 @@
 - React + TypeScript + Vite 单页应用，部署分支：`test/v7-build-verification`
 - GitHub Actions：Node 测试、TypeScript 严格检查、Vite 生产构建、产物/密钥扫描及 HTTP 预览冒烟测试
 - GitHub Pages 公网技术预览：https://qq348125680-lgtm.github.io/banjiguanli/
-- Alpha 44 完整回归：197/197 项测试通过（[构建记录](https://github.com/qq348125680-lgtm/banjiguanli/actions/runs/46121695652)）。版本标签更新后的最终 CI 以最新 Actions 为准。
+- Alpha 44 完整回归：200/200 项测试通过，TypeScript、Vite 和 HTTP 预览通过（[构建记录](https://github.com/qq348125680-lgtm/banjiguanli/actions/runs/46121902881)）。最终 Pages 发布状态以部署工作流为准。
 - 最新 Alpha 44 Pages 部署可在 Actions 中独立核对：[安全预览工作流](https://github.com/qq348125680-lgtm/banjiguanli/actions/workflows/pages-safe-preview.yml)
 
-公开技术预览故意使用空数据库配置并关闭业务写入：**它只验证页面加载，不提供真实登录、学生数据或考勤操作。**
+公开技术预览故意使用空数据库配置并关闭业务写入：**不提供真实登录、学生数据或考勤操作。** 首页新增「查看各模块界面布局（无数据）」入口，可在手机与电脑上体验六个模块导航、空数据状态和响应式布局；不包含真实或虚构学生记录，也不调用 Supabase。
 
 ## 已开发并通过自动测试的安全只读功能
 
