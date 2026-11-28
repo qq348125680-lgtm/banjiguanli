@@ -564,3 +564,61 @@
  .case-nudge-inbox .panel-head>button{width:100%;min-height:44px}
  .case-nudge-list>.task-inbox-link{min-height:50px}
 }
+
+/* V7 real weekly event reports and immutable-case archival views. */
+.weekly-case-report,.closed-case-archive{min-width:0}
+.weekly-case-report .panel-head>button,.closed-case-archive .panel-head>button{min-height:43px;flex-shrink:0}
+.weekly-date-toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;padding:13px;background:#f7f9fd;border:1px solid #e6ebf4;border-radius:11px;margin:15px 0}
+.weekly-date-toolbar>button{min-height:43px}
+.weekly-date-toolbar label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#6d7e99;font-weight:600}
+.weekly-date-toolbar input{min-height:43px;background:#fff}
+.weekly-date-toolbar>span{font-size:12px;font-weight:600;color:#6179a0;align-self:center;margin-left:auto}
+.weekly-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:14px 0 17px}
+.weekly-metric{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 8px;background:#f4f7fe;border:1px solid #e2e9f6;border-radius:11px}
+.weekly-metric>strong{font-size:24px;line-height:1.2;color:#4d68a1}
+.weekly-metric span{font-size:11px;font-weight:600;color:#6d809c;text-align:center}
+.weekly-metric small{font-size:11px;color:#9ba7ba}
+.weekly-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:12px 0}
+.weekly-summary-grid>div{border:1px solid #e6ebf4;border-radius:12px;padding:13px;min-width:0}
+.weekly-summary-grid h3{font-size:13px;color:#52698e;margin:0 0 11px}
+.weekly-report-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.weekly-report-list>div{display:flex;align-items:center;justify-content:space-between;gap:7px;padding:9px;background:#f7f9fd;border-radius:8px}
+.weekly-report-list span,.weekly-report-list strong{font-size:12px;color:#596e91}
+.weekly-report-list strong{font-weight:750}
+.weekly-export-actions{display:flex;gap:9px;flex-wrap:wrap;margin:13px 0}
+.weekly-export-actions button{min-height:44px}
+.weekly-report-text-label{display:flex;flex-direction:column;gap:8px;font-size:12px;font-weight:700;color:#697d9d;margin-top:10px}
+.weekly-report-text{width:100%;max-width:100%;min-height:235px;white-space:pre-wrap;font-size:12px;line-height:1.8;background:#fcfdff;color:#526384;font-family:ui-monospace,Menlo,Consolas,"Microsoft YaHei",monospace}
+.archive-filter-row{display:grid;grid-template-columns:minmax(100px,1fr) repeat(2,minmax(150px,1.2fr)) auto;gap:10px;align-items:end;margin:15px 0}
+.archive-filter-row label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:600;color:#657998;min-width:0}
+.archive-filter-row input,.archive-filter-row select{width:100%;min-height:44px}
+.archive-filter-row>button{min-height:44px}
+.case-archive-shortcuts{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:13px}
+.case-archive-shortcuts>button{min-height:43px}
+.closed-case-list{display:grid;gap:10px;margin:10px 0}
+.closed-case-item{border:1px solid #e5eaf4;border-radius:11px;padding:14px;background:#fff}
+.closed-case-item-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.closed-case-item-head strong{font-size:13px;color:#4c6388;overflow-wrap:anywhere;flex:1}
+.closed-case-item-head .event-state{margin-left:auto}
+.closed-case-item>.muted{font-size:12px;margin:10px 0}
+.closed-case-item>.button{min-height:44px}
+@media(max-width:900px){
+ .weekly-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .archive-filter-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .archive-filter-row>button{grid-column:1/-1}
+}
+@media(max-width:700px){
+ .weekly-case-report .panel-head,.closed-case-archive .panel-head{align-items:stretch;flex-direction:column}
+ .weekly-case-report .panel-head>button,.closed-case-archive .panel-head>button{min-height:46px;width:100%}
+ .weekly-date-toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .weekly-date-toolbar label{grid-column:1/-1;grid-row:1}
+ .weekly-date-toolbar>span{grid-column:1/-1;justify-self:center;margin:0}
+ .weekly-date-toolbar>button{min-height:46px}
+ .weekly-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .weekly-summary-grid{grid-template-columns:1fr}
+ .weekly-report-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .weekly-export-actions{display:grid;grid-template-columns:1fr}
+ .weekly-export-actions button{min-height:46px}
+ .archive-filter-row{grid-template-columns:1fr}
+ .closed-case-item>.button{width:100%}
+}
