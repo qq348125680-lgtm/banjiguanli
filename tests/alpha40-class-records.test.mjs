@@ -75,7 +75,9 @@ test('Alpha40 page never fabricates missing fields or reveals family identity co
  assert.equal(info.date,'2026-11-20');assert.equal(info.description,'电话');
  const app=readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');
  const panel=readFileSync(new URL('../src/components/ClassRecordsPanel.tsx',import.meta.url),'utf8');
- assert.match(app,/view==='records'&&\(!owned\?<EventCenterPanel/);
+ assert.match(app,/view==='records'&&\(!owned\?<><div className="student-center-tabs"/);
+ assert.match(app,/recordTab!=='cases'&&<EventCenterPanel/);
+ assert.match(app,/recordTab==='cases'&&<EventCaseBoard/);
  assert.match(app,/view==='records'&&\(!owned\?[^\n]*:<><div className="student-center-tabs"/);
  assert.match(app,/recordTab==='activity'&&<ClassRecordsPanel/);
  assert.match(app,/recordTab==='rules'&&<PointRulesPanel/);
