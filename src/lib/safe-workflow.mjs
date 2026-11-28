@@ -42,5 +42,15 @@ export function createSafeWorkflow(client) {
       p_submission_id:submissionId,p_action:action,p_note:note.trim()
     });if(error)throw error;return data;
   }
-  return Object.freeze({roster,submit,verifySubmission,review});
+  async function verifyReview({classId,submissionId}){
+    await user();assertUuid(classId);assertUuid(submissionId);
+    // RLS gives only the current class owner access to the review row.
+    const {data,error}=await client.from('cadre_submissions')
+      .select('id,class_id,status,reviewed_at,reviewed_by')
+      .eq('class_id',classId).eq('id',submissionId).maybeSingle();
+    if(error)throw error;
+    if(!data||data.class_id!==classId||data.id!==submissionId)throw Error('无法核实该申请，请保持当前操作锁定');
+    return data;
+  }
+  return Object.freeze({roster,submit,verifySubmission,review,verifyReview});
 }
