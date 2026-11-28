@@ -32,7 +32,7 @@ test('isolated PG verification covers six sources, duplicates, access boundaries
  assert.match(pg,/expected six linked original-record categories/);
  assert.match(pg,/same original attendance accepted two cases/);
  assert.match(pg,/cross-student attendance linked/);
- assert.match(pg,/delegate can inspect owner-only source link identifiers/);
+ assert.match(pg,/cadre can inspect owner-only source link identifiers/);
  assert.match(cleanup,/delete from public\.attendance where id in/);
 });
 test('event center cannot treat failed link query as no existing work orders',()=>{
