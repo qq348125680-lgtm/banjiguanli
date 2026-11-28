@@ -1,12 +1,23 @@
 import {useState} from 'react';
-import {pendingRecordChecks} from '../lib/record-checks.mjs';
+import {pendingRecordChecks,exportRecordChecksCsv} from '../lib/record-checks.mjs';
 import type {StudentItem} from '../lib/bridge';
 export function RecordChecksPanel({kind,records,students}:{kind:string;records:Record<string,unknown>[];students:StudentItem[]}){
  const checks=pendingRecordChecks(kind,records);
  const [reviewed,setReviewed]=useState<string[]>([]);
  const names=new Map(students.map(s=>[s.id,s.name]));
+ function exportCurrentChecks(){
+  if(!checks.length||!['考勤','请假','值日','违纪'].includes(kind))return;
+  const csv=exportRecordChecksCsv(kind,checks,students);
+  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  const anchor=document.createElement('a');
+  anchor.href=url;anchor.download=`当前页待核对事项_${kind}.csv`;
+  document.body.appendChild(anchor);anchor.click();anchor.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+ }
+
  if(!checks.length)return <section className="record-checks" aria-label="当前页待核对事项"><h3>当前页数据核对</h3><p className="muted">本页未发现预设的填写缺项；不代表全班或其他页没有待处理事项。</p></section>;
  return <section className="record-checks" aria-label="当前页待核对事项"><h3>当前页待核对事项（{checks.length} 条）</h3><p className="muted">这些是自动提示，未核实事实或学校审批结果。勾选“本页已查看”只作用于当前页面，不写入数据库、不作为正式结案。</p>
+ {['考勤','请假','值日','违纪'].includes(kind)&&<button type="button" className="record-refresh" onClick={exportCurrentChecks}>导出当前页待核对清单 CSV</button>}
  <div className="record-check-list">{checks.map(item=><article key={item.id} className="record-check-item"><div><strong>{names.get(item.student_id)??'关联学生'}</strong><span>{item.reason.join('；')}</span></div><label><input type="checkbox" checked={reviewed.includes(item.id)} onChange={e=>setReviewed(v=>e.target.checked?[...v,item.id]:v.filter(id=>id!==item.id))}/>本页已查看</label></article>)}</div>
  <p className="muted">本页已查看 {checks.filter(x=>reviewed.includes(x.id)).length} / {checks.length} 条；正式异常处理、联系家长、说明补充及审核，仍须在具备授权的正式业务流程完成。</p>
  </section>;
