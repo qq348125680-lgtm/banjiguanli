@@ -5,6 +5,7 @@ import {EventRelationshipPreview} from './EventRelationshipPreview';
 import {TaskInboxPreview} from './TaskInboxPreview';
 import {CaseDeadlinePreview,CaseOverviewPreview} from './CaseDeadlinePreview';
 import {CaseNudgeInboxPreview} from './CaseNudgeInboxPreview';
+import {WeeklyCaseArchivePreview} from './WeeklyCaseArchivePreview';
 
 /** Public, browser-only layout sample. Contains no accounts, rows, fake students, keys or writes. */
 const TABS=[
@@ -38,7 +39,7 @@ export function SafePreviewWorkspace({onExit}:{onExit:()=>void}){
     {tab==='attendance'&&<section className="panel"><h2>连续考勤</h2><p className="muted">正式系统中此处可按姓名快速筛选、只看未登记、定位下一位、记录迟到及请假。</p><div className="preview-steps"><span>日期选择</span><span>选择学生</span><span>登记类型</span><span>提交待审核</span></div><div className="preview-empty">尚未连接已授权学生名单。考勤提交已禁用。</div><button disabled className="button">提交考勤（不可用）</button></section>}
     {tab==='review'&&<section className="panel"><div className="panel-head"><div><h2>审核与班干部协作</h2><p>审核积压、重复申请及按提交人核对</p></div><span className="count">数量未知</span></div><div className="preview-empty">暂无已授权的审核记录。这里不会生成虚构的待办或审核结果。</div><button disabled className="button">批准并入账（不可用）</button></section>}
     {tab==='records'&&<section className="panel"><div className="panel-head"><div><h2>班务记录中心</h2><p>六类业务的只读筛选、分页、核对与安全导出</p></div><span className="count">只读版式</span></div><div className="record-tabs" role="group" aria-label="预览班务分类">{['考勤','请假','违纪','积分','值日','家校沟通'].map(x=><button key={x} type="button" aria-pressed={kind===x} className={kind===x?'active':''} onClick={()=>setKind(x)}>{x}</button>)}</div><div className="preview-empty">“{kind}”当前无可用数据。正式业务操作和导出均已禁用。</div></section>}
-    {tab==='events'&&<><EventRelationshipPreview key="flow" mode="events"/><CaseOverviewPreview/></>}
+    {tab==='events'&&<><EventRelationshipPreview key="flow" mode="events"/><CaseOverviewPreview/><WeeklyCaseArchivePreview/></>}
     {tab==='relations'&&<EventRelationshipPreview key="links" mode="relations"/>}
     {tab==='guardians'&&<section className="panel guardian-center"><div className="panel-head"><div><h2>家庭联系人关系</h2><p>班主任登记、核实、停用 · 家长账号尚未绑定</p></div><span className="count">只读预览</span></div><div className="preview-empty">尚未连接授权班级或家庭联系人。本模块不会猜测家长身份、展示真实电话或生成虚构的联系人关系。</div><button className="button" type="button" disabled>登记联系人（预览不可用）</button></section>}
     {tab==='duty'&&<section className="panel"><h2>九人值日分工</h2><p className="muted">仅展示已确认的任务数量；不安排具体学生，也不自动写入排班。</p><div className="preview-duty-grid">{[['扫地','4人'],['拖地','3人'],['综合整理','1人'],['排桌','1人']].map(([name,n])=><div className="preview-duty-tile" key={name}><strong>{name}</strong><span>{n}</span></div>)}</div><div className="preview-empty">正式版在已授权名单内做轮换、缺席替补与公平统计。</div></section>}
