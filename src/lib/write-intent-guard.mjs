@@ -9,6 +9,8 @@ export function beginWriteIntent(storage,kind,scope,id){
  const existing=loadPendingMarker(storage,kind,scope);
  if(existing)return {ok:false,reason:'pending',id:existing};
  if(!savePendingMarker(storage,kind,scope,id))return {ok:false,reason:'storage'};
+ // A browser/storage shim may silently drop writes; require a read-back.
+ if(loadPendingMarker(storage,kind,scope)!==id)return {ok:false,reason:'storage'};
  return {ok:true,id};
 }
 
