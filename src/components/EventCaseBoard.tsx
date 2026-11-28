@@ -14,13 +14,13 @@ type Api={
  findByRequestKey:(classId:string,requestKey:string)=>Promise<CaseRow|null>;
  transition:(id:string,action:string,assignee:string|null,note:string)=>Promise<{id:string;status:string}>;
 };
-type Props={api:Api;classId:string;userId:string;owned:boolean;canWrite:boolean;students:StudentItem[];onStudent:(id:string)=>void};
+type Props={api:Api;classId:string;userId:string;owned:boolean;canWrite:boolean;students:StudentItem[];onStudent:(id:string)=>void;initialDraft?:{studentId:string;kind:string;title:string}|null};
 const newKey=()=>crypto.randomUUID();
-export function EventCaseBoard({api,classId,userId,owned,canWrite,students,onStudent}:Props){
+export function EventCaseBoard({api,classId,userId,owned,canWrite,students,onStudent,initialDraft}:Props){
  const [cases,setCases]=useState<CaseRow[]>([]),[count,setCount]=useState<number|null>(null);
  const [filter,setFilter]=useState('全部'),[page,setPage]=useState(1),[revision,setRevision]=useState(0);
  const [loading,setLoading]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
- const [studentId,setStudentId]=useState(''),[kind,setKind]=useState('考勤'),[title,setTitle]=useState(''),[description,setDescription]=useState('');
+ const [studentId,setStudentId]=useState(initialDraft?.studentId??''),[kind,setKind]=useState(initialDraft&&CASE_KINDS.includes(initialDraft.kind)?initialDraft.kind:'考勤'),[title,setTitle]=useState(initialDraft?.title??''),[description,setDescription]=useState('');
  const [requestKey,setRequestKey]=useState(newKey),[uncertain,setUncertain]=useState(false);
  const [candidates,setCandidates]=useState<Candidate[]>([]),[candidateError,setCandidateError]=useState('');
  const [targetById,setTargetById]=useState<Record<string,string>>({}),[notes,setNotes]=useState<Record<string,string>>({});
