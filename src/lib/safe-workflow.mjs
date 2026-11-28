@@ -22,7 +22,9 @@ export function createSafeWorkflow(client) {
     let existing;
     try{existing=await verifySubmission({classId,studentId,date})}
     catch(e){throw Object.assign(Error('提交前已有申请核对失败，尚未发起写入；请先核对我的提交记录'),{code:'V7_PREFLIGHT_FAILED',cause:e})}
-    if(existing.length)throw Object.assign(Error('该学生本日已有本人提交的考勤申请，请到我的提交记录核对，不能重复提交'),{code:'V7_ALREADY_SUBMITTED'});
+    // Rejected requests may be corrected and re-submitted. Pending/approved/unknown
+    // records are not safe to resend; the staging index independently guards races.
+    if(existing.some(item=>item.status!=='已驳回'))throw Object.assign(Error('该学生本日已有待审核或已处理的考勤申请，请到我的提交记录核对'),{code:'V7_ALREADY_SUBMITTED'});
     const {data,error}=await client.from('cadre_submissions').insert({
       class_id:classId,student_id:studentId,submitted_by:u.id,entry_type:'考勤',occurred_on:date,
       details:{status,note},status:'待审核'
