@@ -24,7 +24,7 @@ export function createSafeWorkflow(client) {
   // the requesting delegate's own submissions. No automatic second INSERT.
   async function verifySubmission({classId,studentId,date}){
     const u=await user();assertUuid(classId);assertUuid(studentId);
-    if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)||!Number.isFinite(Date.parse(date+'T00:00:00Z'))||new Date(date+'T00:00:00Z').toISOString().slice(0,10)!==date)throw Error('核对日期不合法');
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date+'T00:00:00Z'))||new Date(date+'T00:00:00Z').toISOString().slice(0,10)!==date)throw Error('核对日期不合法');
     const {data,error}=await client.from('cadre_submissions')
       .select('id,student_id,occurred_on,entry_type,status,details,created_at')
       .eq('class_id',classId).eq('submitted_by',u.id)
