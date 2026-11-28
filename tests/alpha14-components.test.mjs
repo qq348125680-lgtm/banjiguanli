@@ -14,10 +14,15 @@ test('business panels are extracted and integrated, with no duplicate inline pan
  assert.doesNotMatch(app,/<h2>班干部快捷考勤<\/h2>/);
  assert.doesNotMatch(app,/<h2>\{owned\?'班主任审核中心'/);
 });
-test('filtering unfinished students does not alter underlying roster',()=>{
- assert.match(progress,/onlyOutstanding\?left:roster/);
+test('filtering unfinished students does not alter underlying roster',async()=>{
+ const {progressStudents}=await import('../src/lib/list-view.mjs');
+ const roster=[{id:'1',name:'学生一',student_no:'001'},{id:'2',name:'学生二',student_no:'002'}];
+ const result=progressStudents(roster,['1','1'],'',true);
+ assert.equal(result.done,1);
+ assert.deepEqual(result.visible.map(s=>s.id),['2']);
+ assert.deepEqual(roster.map(s=>s.id),['1','2']);
  assert.match(progress,/checked=\{onlyOutstanding\}/);
- assert.match(progress,/outstandingStudents\(roster,completed\)/);
+ assert.match(progress,/progressStudents\(roster,completed,search,onlyOutstanding\)/);
  assert.doesNotMatch(progress,/(insert\(|upsert\(|\.rpc\()/);
 });
 test('entry inputs are held during mutation and persist only on successful submission',()=>{
