@@ -31,3 +31,14 @@ test('public preview exercises event workflow and role model without live data',
  assert.match(preview,/\['relations','用户关系'/);
  assert.match(preview,/数据库访问、身份认证及业务写入均不可用/);
 });
+
+test('context links take a student from event to real identity relation and back',()=>{
+ const relations=read('src/components/RelationshipCenterPanel.tsx');
+ const events=read('src/components/EventCenterPanel.tsx');
+ assert.match(app,/function openLinkedRelations\(studentId:string\)/);
+ assert.match(app,/function openLinkedEvents\(studentId:string\)/);
+ assert.match(app,/setLinkedStudentId\(studentId\)/);
+ assert.match(events,/focusStudentId/);
+ assert.match(events,/onRelations\(item\.studentId\)/);
+ assert.match(relations,/onEvents\(\(item as Student\)\.id\)/);
+});
