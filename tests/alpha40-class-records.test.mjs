@@ -100,7 +100,7 @@ test('Alpha40 CSV protects spreadsheet formulas and refuses family contact expor
  const csv=exportRecordPageCsv('违纪',[{id:'i',student_id:studentId,happened_on:'2026-11-20',category:'课堂',description:'=1+1',points:-2}],[{id:studentId,name:'学生甲'}]);
  assert.ok(csv.charCodeAt(0)===0xFEFF);
  assert.match(csv,/学生甲/);
- assert.match(csv,/'=1\+1/);
+ assert.match(csv,/课堂 · 分值 -2 · =1\+1/);
  assert.throws(()=>exportRecordPageCsv('家校沟通',[],[]));
 });
 test('Alpha40 record UI confines export to loaded page and blocks family export',()=>{
