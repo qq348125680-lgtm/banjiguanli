@@ -21,6 +21,7 @@ import {decideQuerySnapshot} from './lib/query-snapshot.mjs';
 import {createAuthBootstrapGate} from './lib/auth-bootstrap.mjs';
 import {invalidateSelectedClass} from './lib/authorization-race.mjs';
 import {decideReadFailure} from './lib/read-failure-policy.mjs';
+import {withReadDeadline} from './lib/read-deadline.mjs';
 
 type View='dashboard'|'students'|'entry'|'review'|'records'|'reports'|'archive';
 const nav:[View,string,typeof LayoutDashboard][]=[['dashboard','工作台',LayoutDashboard],['students','学生中心',Users],['entry','班级事务',ClipboardList],['review','审核中心',ClipboardCheck],['records','班务记录',BookOpen],['reports','数据分析',ShieldCheck],['archive','工作档案',Archive]];
@@ -88,7 +89,7 @@ export default function App(){
   });
   return ()=>{gate.dispose();subscription.unsubscribe()};
  },[]);
- const loadClasses=useCallback(async()=>{if(!bridges||!user)return;const sequence=++authorizationSeq.current;setLoading(true);setProblem('');try{const data=await bridges.reader.authorizedClasses();if(sequence!==authorizationSeq.current)return;setClasses(data.owned);setDelegated(data.delegated);setAuthorizationBlocked(false);setClassId(prev=>[...data.owned.map((x:ClassItem)=>x.id),...data.delegated.map((x:DelegateItem)=>x.class_id)].includes(prev)?prev:(data.owned[0]?.id??data.delegated[0]?.class_id??''));}catch(e){if(sequence===authorizationSeq.current){setAuthorizationBlocked(true);requestSeq.current++;loadedScopeRef.current='';setClasses([]);setDelegated([]);setClassId('');setStudents([]);setRoster([]);setRosterLoaded(false);setItems([]);setTotal(null);setAudits([]);setAuditTotal(null);setPendingCount(null);setDossierId('');setReviewNotes({});setSubmittedSession([]);setFeedback('');setProblem('读取班级授权失败，已清除先前显示的班级及业务数据，请重新验证：'+displayError(e));}}finally{if(sequence===authorizationSeq.current)setLoading(false)}},[bridges,user]);
+ const loadClasses=useCallback(async()=>{if(!bridges||!user)return;const sequence=++authorizationSeq.current;setLoading(true);setProblem('');try{const data=await withReadDeadline(()=>bridges.reader.authorizedClasses());if(sequence!==authorizationSeq.current)return;setClasses(data.owned);setDelegated(data.delegated);setAuthorizationBlocked(false);setClassId(prev=>[...data.owned.map((x:ClassItem)=>x.id),...data.delegated.map((x:DelegateItem)=>x.class_id)].includes(prev)?prev:(data.owned[0]?.id??data.delegated[0]?.class_id??''));}catch(e){if(sequence===authorizationSeq.current){setAuthorizationBlocked(true);requestSeq.current++;loadedScopeRef.current='';setClasses([]);setDelegated([]);setClassId('');setStudents([]);setRoster([]);setRosterLoaded(false);setItems([]);setTotal(null);setAudits([]);setAuditTotal(null);setPendingCount(null);setDossierId('');setReviewNotes({});setSubmittedSession([]);setFeedback('');setProblem('读取班级授权失败，已清除先前显示的班级及业务数据，请重新验证：'+displayError(e));}}finally{if(sequence===authorizationSeq.current)setLoading(false)}},[bridges,user]);
  useEffect(()=>{
   const nextAccountId=user?.id??'';
   if(activeAccountId.current!==nextAccountId){
@@ -125,7 +126,7 @@ export default function App(){
      setStudents([]);setRoster([]);setRosterLoaded(false);setItems([]);setAudits([]);setTotal(null);setAuditTotal(null);setPendingCount(null);
    }
    try {
-     const result=await loadScopedPanels({owned,view,reader:bridges.reader,writer:bridges.writer,classId,page,pageSize,filter,sanitizeList});
+     const result=await withReadDeadline(()=>loadScopedPanels({owned,view,reader:bridges.reader,writer:bridges.writer,classId,page,pageSize,filter,sanitizeList}));
      if(sequence!==requestSeq.current)return;
      const recovery=decideReadFailure(result,{owned,view});
      if(recovery.blockClass){
@@ -165,7 +166,7 @@ export default function App(){
   ++requestSeq.current;
   setAuthorizationChecking(true);setProblem('');
   try{
-   const data=await bridges.reader.authorizedClasses();
+   const data=await withReadDeadline(()=>bridges.reader.authorizedClasses());
    if(sequence!==authorizationSeq.current||activeAccountId.current!==requestedUser)return;
    setAuthorizationBlocked(false);
    const decision=reconcileAuthorization(data,classId);
