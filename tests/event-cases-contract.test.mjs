@@ -9,13 +9,13 @@ test('new event tables are isolated staging-only with role-controlled selects an
   assert.ok(sql.includes(marker),'missing '+marker);
  }
  assert.match(sql,/on conflict\(class_id,request_key\) do nothing/);
- assert.match(sql,/if v_case\.status/);
+ assert.match(sql,/v_case\.status<>'已结案'/);
  assert.match(sql,/to authenticated/);
  assert.doesNotMatch(sql,/grant (insert|update|delete|all) on public\.v7_event_cases to authenticated/i);
 });
 test('event case board uses existing class account scope and respects write toggle',()=>{
- const app=text('src/App.tsx'),panel=text('src/components/EventCaseBoard.tsx');
- assert.match(app,/case[s]?:createEventCaseApi|cases:createEventCaseApi/);
+ const app=text('src/App.tsx'),panel=text('src/components/EventCaseBoard.tsx'),bridge=text('src/lib/bridge.ts');
+ assert.match(bridge,/cases:createEventCaseApi\(client\)/);
  assert.match(app,/recordTab==='cases'&&<EventCaseBoard/);
  assert.match(app,/canWrite=\{canWrite\}/);
  assert.match(panel,/canWrite&&<form/);
