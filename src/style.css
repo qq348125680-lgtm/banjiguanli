@@ -146,3 +146,24 @@
 .duty-draft strong{font-size:14px;color:#465d95}
 .duty-draft small{color:#8a96aa}
 @media(max-width:700px){.duty-draft>div{grid-template-columns:1fr auto;gap:5px}.duty-draft small{grid-column:1/-1}.duty-plan .duty-form{grid-template-columns:1fr}}
+
+/* Alpha41: existing-class points rules and local-only trial. */
+.point-rule-controls{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:18px 0}
+.point-rule-controls>label{display:flex;flex-direction:column;gap:7px;color:#66768e;font-size:12px}
+.point-rule-controls>label:first-child{flex:1 1 220px}
+.point-rule-controls input{width:100%}
+.point-rule-controls .point-disabled{display:flex;flex-direction:row;align-items:center;gap:8px}
+.point-disabled input{min-width:18px;min-height:18px}
+.point-rule-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:17px 0}
+.point-rule-item{border:1px solid #e8edf5;background:#f9faff;border-radius:13px;padding:16px;min-width:0}
+.point-rule-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.point-rule-head strong{font-size:14px;color:#3e5077}
+.point-rule-head span{font-size:11px;color:#627ab0;background:#e8edf9;padding:5px 9px;border-radius:18px}
+.point-rule-item p{font-size:12px;color:#63748e;overflow-wrap:anywhere}
+.point-rule-trial{display:grid;grid-template-columns:85px minmax(0,1fr) 95px;gap:9px;align-items:end;margin:13px 0}
+.point-rule-trial label{display:flex;flex-direction:column;gap:6px;color:#667a91;font-size:12px}
+.point-rule-trial input{width:100%;min-width:0}
+.point-rule-trial>span{font-size:12px;color:#667891}
+.point-rule-trial>span strong{display:block;font-size:20px;color:#4f60a1}
+@media(max-width:800px){.point-rule-grid{grid-template-columns:1fr}}
+@media(max-width:700px){.point-rule-trial{grid-template-columns:1fr 1fr}.point-rule-trial>span{grid-column:1/-1}.point-rule-controls>label:first-child{flex-basis:100%}}
