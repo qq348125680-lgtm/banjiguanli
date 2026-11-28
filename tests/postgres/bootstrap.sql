@@ -72,12 +72,15 @@ create policy delegates_self_read on public.class_delegates for select to authen
  using(user_id=(select auth.uid()));
 create policy submissions_cadre_insert on public.cadre_submissions for insert to authenticated
  with check (
-  status='待审核' and submitted_by=(select auth.uid()) and
+  status='待审核' and submitted_by=(select auth.uid())
+  and reviewed_by is null and reviewed_at is null and
   exists(select 1 from public.class_delegates d where
    d.class_id=cadre_submissions.class_id and d.user_id=(select auth.uid()) and d.enabled is true)
  );
 create policy submissions_cadre_read on public.cadre_submissions for select to authenticated
- using(submitted_by=(select auth.uid()));
+ using(submitted_by=(select auth.uid()) and
+   exists(select 1 from public.class_delegates d where d.class_id=cadre_submissions.class_id
+   and d.user_id=(select auth.uid()) and d.enabled is true));
 create policy submissions_teacher on public.cadre_submissions for all to authenticated
  using(exists(select 1 from public.classes c where c.id=class_id and c.owner_id=(select auth.uid())))
  with check(exists(select 1 from public.classes c where c.id=class_id and c.owner_id=(select auth.uid())));
@@ -98,3 +101,9 @@ insert into public.class_delegates(class_id,user_id,duty,enabled) values
  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','33333333-3333-4333-8333-333333333333','班长',true),
  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','44444444-4444-4444-8444-444444444444','禁用干部',false),
  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','66666666-6666-4666-8666-666666666666','协作干部',true);
+
+-- A synthetic historical record from a now-disabled actor: must remain invisible to that actor.
+insert into public.cadre_submissions(id,class_id,student_id,submitted_by,entry_type,occurred_on,details,status)
+values('eeeeeeee-eeee-4eee-8eee-000000000001','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+ 'aaaaaaaa-0000-4000-8000-000000000002','44444444-4444-4444-8444-444444444444',
+ '考勤','2026-12-20','{"status":"出勤"}','待审核');
