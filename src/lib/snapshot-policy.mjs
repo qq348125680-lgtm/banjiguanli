@@ -23,7 +23,7 @@ export function reconcileAuthorization(data,currentClassId){
  * The verifiedOverride is only passed by the same awaited successful verification.
  * Server-side RLS remains mandatory: this is a UI fail-closed guard, not permission granting.
  */
-export function canReadAuthorizedScope({hasBridge,hasUser,classId,authorizedClassIds=[],authorizationBlocked,verifiedOverride=false}) {
+export function canReadAuthorizedScope({hasBridge,hasUser,classId,authorizedClassIds=/** @type {string[]} */ ([]),authorizationBlocked,verifiedOverride=false}) {
   // The requested class must be in the currently verified ownership/delegation list.
   // This is a frontend guard, not a replacement for the database RLS policies.
   return Boolean(hasBridge && hasUser && classId &&
