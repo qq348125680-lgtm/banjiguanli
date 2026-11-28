@@ -51,10 +51,14 @@ test('Alpha47 no storage privileges or full quota must never bypass account guar
 });
 test('Alpha47 actual UI restores, saves and clears pending status under exact login scope',()=>{
  const app=readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');
- assert.match(app,/loadPendingMarker\(browserSessionStorage\(\),'submit',\{accountId:user\.id,classId,day\}\)/);
- assert.match(app,/loadPendingMarker\(browserSessionStorage\(\),'review',\{accountId:user\.id,classId\}\)/);
- assert.match(app,/savePendingMarker\(browserSessionStorage\(\),'submit'/);
- assert.match(app,/savePendingMarker\(browserSessionStorage\(\),'review'/);
- assert.match(app,/clearPendingMarker\(browserSessionStorage\(\),'submit'/);
- assert.match(app,/clearPendingMarker\(browserSessionStorage\(\),'review'/);
+ // The UI now uses write-ahead markers and read-only inspection. The old
+ // post-error save/clear contract would reintroduce a lost-marker crash risk.
+ assert.match(app,/inspectPendingMarker\(browserSessionStorage\(\),'submit',\{accountId:user\.id,classId,day\}\)/);
+ assert.match(app,/inspectPendingMarker\(browserSessionStorage\(\),'review',\{accountId:user\.id,classId\}\)/);
+ assert.match(app,/beginWriteIntent\(browserSessionStorage\(\),'submit',intentScope,submittedStudent\)/);
+ assert.match(app,/beginWriteIntent\(browserSessionStorage\(\),'review',intentScope,id\)/);
+ assert.match(app,/finishKnownWrite\(browserSessionStorage\(\),'submit'/);
+ assert.match(app,/finishKnownWrite\(browserSessionStorage\(\),'review'/);
+ assert.match(app,/listAuthorizedPendingMarkers\(browserSessionStorage\(\),user\.id,authorizedClassIds\)/);
+ assert.doesNotMatch(app,/savePendingMarker\(browserSessionStorage\(\),/);
 });
