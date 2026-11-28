@@ -109,6 +109,7 @@ begin;
 set local role authenticated;
 set local request.jwt.claim.sub='44444444-4444-4444-8444-444444444444';
 do $$
+declare n int;
 begin
  begin
   perform * from public.v7_cadre_roster('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
@@ -124,6 +125,9 @@ begin
   raise exception 'disabled delegate should not insert pending application';
  exception when insufficient_privilege then null;
  end;
+ select count(*) into n from public.cadre_submissions
+  where submitted_by='44444444-4444-4444-8444-444444444444';
+ if n<>0 then raise exception 'disabled actor still sees old submissions';end if;
 end$$;
 commit;
 
