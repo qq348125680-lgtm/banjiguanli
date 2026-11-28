@@ -68,7 +68,7 @@ export default function App(){
  const [studentTab,setStudentTab]=useState<'roster'|'organization'|'relations'|'guardians'>('roster');
  const [recordTab,setRecordTab]=useState<'activity'|'rules'|'events'|'cases'>('activity');
  const [recordFocusKind,setRecordFocusKind]=useState('考勤');
- const [caseDraft,setCaseDraft]=useState<{studentId:string;kind:string;title:string}|null>(null);
+ const [caseDraft,setCaseDraft]=useState<{studentId:string;kind:string;title:string;sourceRecordId?:string}|null>(null);
  const [caseStudentId,setCaseStudentId]=useState(''),[caseFocusId,setCaseFocusId]=useState('');
  const [linkedStudentId,setLinkedStudentId]=useState('');
  const [guardianFocusStudentId,setGuardianFocusStudentId]=useState('');
@@ -98,7 +98,19 @@ export default function App(){
  },[bridges,user,classId,owned,isAuthorizedClass,authorizationBlocked,authorizationChecking]);
  const fetchEventFeed=useCallback(async()=>{
   if(!bridges||!user||!classId||!isAuthorizedClass||authorizationBlocked||authorizationChecking)throw Error('当前无权读取班级事件');
-  if(owned)return bridges.reader.classEventsForOwner(classId);
+  if(owned){
+   const feed=await bridges.reader.classEventsForOwner(classId);
+   try{
+    const links=await bridges.cases.sourceLinks(classId,feed.events);
+    const bySource=new Map(links.map(link=>[link.source_kind+':'+link.source_record_id+':'+link.student_id,link.case_id]));
+    return {...feed,linksAvailable:true,events:feed.events.map(ev=>({
+     ...ev,linkedCaseId:bySource.get(ev.kind+':'+ev.sourceId+':'+ev.studentId)??null
+    }))};
+   }catch{
+    // Never pretend a source has no follow-up if mapping cannot be checked.
+    return {...feed,linksAvailable:false};
+   }
+  }
   const result=await bridges.reader.mySubmissions(classId,{page:1,pageSize:20});
   return buildDelegateEventFeed(result.items,roster);
  },[bridges,user?.id,classId,owned,isAuthorizedClass,authorizationBlocked,authorizationChecking,roster]);
@@ -127,9 +139,10 @@ export default function App(){
  function openStudentCases(studentId:string){
   setCaseDraft(null);setCaseStudentId(studentId);setCaseFocusId('');setRecordTab('cases');selectView('records');
  }
- function openCaseFromEvent(studentId:string,kind:string,summary:string){
-  if(!canWrite||!owned)return;
-  setCaseStudentId('');setCaseFocusId('');setCaseDraft({studentId,kind,title:(kind+' · '+summary).slice(0,80)});
+ function openCaseFromEvent(studentId:string,kind:string,summary:string,sourceRecordId:string){
+  if(!canWrite||!owned||!sourceRecordId)return;
+  setCaseStudentId('');setCaseFocusId('');
+  setCaseDraft({studentId,kind,title:(kind+' · '+summary).slice(0,80),sourceRecordId});
   setRecordTab('cases');selectView('records');
  }
  function openLinkedEvents(studentId:string){
@@ -486,7 +499,7 @@ export default function App(){
    <button type="button" className={recordTab==='activity'?'active':''} aria-pressed={recordTab==='activity'} onClick={()=>setRecordTab('activity')}>业务记录</button>
    <button type="button" className={recordTab==='rules'?'active':''} aria-pressed={recordTab==='rules'} onClick={()=>setRecordTab('rules')}>积分与违纪规则</button><button type="button" className={recordTab==='events'?'active':''} aria-pressed={recordTab==='events'} onClick={()=>{setLinkedStudentId('');setRecordTab('events')}}>事件中心</button><button type="button" className={recordTab==='cases'?'active':''} aria-pressed={recordTab==='cases'} onClick={()=>{setCaseDraft(null);setCaseStudentId('');setCaseFocusId('');setRecordTab('cases')}}>事件工单</button></div>
    {recordTab==='activity'&&<ClassRecordsPanel key={`${user.id}:${classId}:${recordFocusKind}`} load={fetchClassRecords} initialKind={recordFocusKind}/>}
-   {recordTab==='events'&&<EventCenterPanel key={`${user.id}:${classId}:events`} load={fetchEventFeed} owned={owned} onStudent={openEventStudent} onRecord={openEventRecord} onCreateCase={canWrite?openCaseFromEvent:undefined} onRelations={openLinkedRelations} focusStudentId={linkedStudentId} onClearFocus={()=>setLinkedStudentId('')}/>} 
+   {recordTab==='events'&&<EventCenterPanel key={`${user.id}:${classId}:events`} load={fetchEventFeed} owned={owned} onStudent={openEventStudent} onRecord={openEventRecord} onCreateCase={canWrite?openCaseFromEvent:undefined} onOpenCase={openExactCase} onRelations={openLinkedRelations} focusStudentId={linkedStudentId} onClearFocus={()=>setLinkedStudentId('')}/>} 
    {recordTab==='rules'&&<PointRulesPanel key={`${user.id}:${classId}`} load={fetchPointRules}/>}
    {recordTab==='cases'&&<EventCaseBoard key={`${user.id}:${classId}:cases`} api={bridges!.cases} classId={classId} userId={user.id} owned={true} canWrite={canWrite} students={roster} onStudent={openEventStudent} initialDraft={caseDraft} initialStudentId={caseStudentId} initialCaseId={caseFocusId}/>}</>)}
   {view==='archive'&&owned&&<AuditPanel audits={audits} total={auditTotal} page={page} pageSize={pageSize} loading={loading} setPage={setPage} setPageSize={setPageSize}/>}
