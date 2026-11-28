@@ -1,6 +1,6 @@
 {
   "name": "smart-class-v7-build-gate",
-  "version": "7.0.46-alpha",
+  "version": "7.0.47-alpha",
   "private": true,
   "type": "module",
   "scripts": {
