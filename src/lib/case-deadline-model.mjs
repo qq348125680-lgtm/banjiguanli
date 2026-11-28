@@ -54,6 +54,7 @@ export function verifyWorkloadRows(rows,statuses,kinds){
  if(!Array.isArray(rows))throw Error('班级工单统计未返回有效数据');
  const status=Object.fromEntries(statuses.map(s=>[s,0]));
  const kind=Object.fromEntries(kinds.map(k=>[k,0]));
+ /** @type {Record<string,number>} */
  const assignee={};const seen=new Set();
  for(const row of rows){
   const key=row?.dimension+':'+row?.item;
