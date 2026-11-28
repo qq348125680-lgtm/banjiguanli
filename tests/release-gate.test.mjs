@@ -2,8 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
 const manifest=JSON.parse(readFileSync(new URL('../release-readiness.json',import.meta.url),'utf8'));
-function run(flag){return spawnSync(process.execPath,['scripts/release-gate.mjs',flag],{cwd:new URL('..',import.meta.url),encoding:'utf8'});}
+function run(flag){return spawnSync(process.execPath,['scripts/release-gate.mjs',flag],{cwd:fileURLToPath(new URL('..',import.meta.url)),encoding:'utf8'});}
 test('release status remains informational while critical Supabase acceptances are unverified',()=>{
  const result=run('--status');
  assert.equal(result.status,0);
