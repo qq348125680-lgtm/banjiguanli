@@ -86,3 +86,23 @@ assert.match(entry,/attendance-mobile-status/);
 assert.match(app,/setUncertainSubmit\(null\);setNote\(''\);setAttendance\('出勤'\)/);
 assert.match(css,/\.attendance-status-desktop\{display:none!important\}/);
 console.log('Alpha47 phone one-tap and safe student context switch: 6 assertions PASS');
+
+// Alpha47: a failed follow-up read must never reclassify an already-confirmed write.
+assert.equal((app.match(/refreshAfterConfirmedWrite\(\(\)=>loadData\(\)\)/g)||[]).length,4);
+assert.match(app,/if\(refreshed\.ok\)setFeedback/);
+assert.match(app,/return true;/);
+const followup=fs.readFileSync(new URL('../src/lib/confirmed-write-refresh.mjs',import.meta.url),'utf8');
+assert.match(followup,/catch\(error\)/);
+assert.match(followup,/reason:'incomplete'/);
+// Staging workflow is explicitly manual, synthetic, read-only, and live-ref blocked.
+const stage=fs.readFileSync(new URL('../scripts/staging-readonly-check.mjs',import.meta.url),'utf8');
+const stageGuard=fs.readFileSync(new URL('../src/lib/staging-target-guard.mjs',import.meta.url),'utf8');
+const stageYml=fs.readFileSync(new URL('../.github/workflows/staging-readonly-acceptance.yml',import.meta.url),'utf8');
+assert.match(stage,/validateStagingReadOnlyTarget/);
+assert.match(stage,/signInWithPassword/);
+assert.match(stageGuard,/knownProductionRef='maqxyvqayilmibdrkmxu'/);
+assert.doesNotMatch(stage,/\.insert\(|\.update\(|\.delete\(|\.upsert\(|v7_review_attendance/);
+assert.match(stageYml,/workflow_dispatch:/);
+assert.doesNotMatch(stageYml,/\n  push:/);
+assert.match(stageYml,/environment: v7-staging/);
+console.log('Alpha47 follow-up refresh and staged Auth/RLS safety: 12 source assertions PASS');
