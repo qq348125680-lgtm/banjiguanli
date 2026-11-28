@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {assertRestrictedRead,assertOwnedSubmissionRows,requireForeignSyntheticFixture,assertNoForeignRows} from '../src/lib/staging-access-assertions.mjs';
+import {assertRestrictedRead,assertOwnedSubmissionRows,requireForeignSyntheticFixture,assertNoForeignRows,assertOwnerActiveStudents} from '../src/lib/staging-access-assertions.mjs';
 const classA='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const cadre='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const foreign='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
@@ -27,4 +27,17 @@ test('must seed an actual other-cadre submission to prove privacy',()=>{
  assert.equal(assertNoForeignRows([{id:'mine'}],foreignIds),true);
  assert.throws(()=>assertNoForeignRows([{id:'foreignrow'}],foreignIds),/跨干部/);
  assert.throws(()=>requireForeignSyntheticFixture([{id:'mine',class_id:classA,submitted_by:cadre}],cadre,classA),/造样本/);
+});
+
+test('positive owner student RLS proof rejects empty, archived and cross-class rows',()=>{
+ const active=[
+  {id:'s1',class_id:classA,archived_at:null},
+  {id:'s2',class_id:classA,archived_at:null}
+ ];
+ assert.equal(assertOwnerActiveStudents({data:active,error:null},classA),2);
+ assert.throws(()=>assertOwnerActiveStudents({data:[],error:null},classA),/至少有两名/);
+ assert.throws(()=>assertOwnerActiveStudents({data:[active[0]],error:null},classA),/至少有两名/);
+ assert.throws(()=>assertOwnerActiveStudents({data:[active[0],{...active[1],class_id:foreign}],error:null},classA),/超出预期/);
+ assert.throws(()=>assertOwnerActiveStudents({data:[active[0],{...active[1],archived_at:'2026-11-28'}],error:null},classA),/归档/);
+ assert.throws(()=>assertOwnerActiveStudents({data:active,error:{code:'42501'}},classA),/无法直接读取/);
 });
