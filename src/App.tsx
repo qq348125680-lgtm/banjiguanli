@@ -87,6 +87,7 @@ export default function App(){
  const loadData=useCallback(async(freshAuthorizedClassIds?:string[])=>{
    const verifiedOverride=Boolean(freshAuthorizedClassIds?.includes(classId));
    if(authorizationChecking&&!verifiedOverride)return;
+   if(!user||!bridges)return;
    const sequence=++requestSeq.current;
    if(!canReadAuthorizedScope({hasBridge:Boolean(bridges),hasUser:Boolean(user),classId,authorizedClassIds:freshAuthorizedClassIds??authorizedClassIds,authorizationBlocked,verifiedOverride})){setStudents([]);setRoster([]);setRosterLoaded(false);setItems([]);setPendingCount(null);setAudits([]);setAuditTotal(null);setTotal(null);return;}
    setLoading(true);setProblem('');
@@ -112,7 +113,7 @@ export default function App(){
      if(result.pending.ok)setPendingCount(result.pending.value);
      if(result.audit.ok){setAudits(result.audit.value?.items??[]);setAuditTotal(result.audit.value?.count??null)}
      const labels:{[key:string]:string}={roster:'学生名单',reviews:'审核记录',pending:'待审核数量',audit:'操作日志'};
-     const errors=Object.entries(result).filter(([key,item])=>!item.ok&&(key==='roster'||key==='reviews'||(key==='pending'&&owned)||(key==='audit'&&owned&&view==='archive')));
+     const errors=Object.entries(result as Record<string,{ok:boolean}>).filter(([key,item])=>!item.ok&&(key==='roster'||key==='reviews'||(key==='pending'&&owned)||(key==='audit'&&owned&&view==='archive')));
      if(errors.length)setProblem(errors.map(([key])=>`${labels[key]}读取失败`).join('、')+'；同查询条件刷新时保留上次成功记录（可能已过期），切换页码或筛选条件不沿用旧记录，请重试或到旧版核对。');
    }catch(e){if(sequence===requestSeq.current)setProblem(displayError(e));}
    finally{if(sequence===requestSeq.current)setLoading(false)}
@@ -143,7 +144,7 @@ export default function App(){
     setAuthorizationBlocked(wasRevoked);
     setProblem(wasRevoked?'班级授权已经变化，原有数据已清除；请重新验证新班级授权。':(decision.nextClassId?'已找到可访问的班级，正在读取其数据。':'当前账号没有可访问的班级。'));
    }else{
-    await loadData([...data.owned.map(c=>c.id),...data.delegated.map(d=>d.class_id)]);
+    await loadData([...data.owned.map((c:ClassItem)=>c.id),...data.delegated.map((d:DelegateItem)=>d.class_id)]);
    }
   }catch(e){
    if(sequence===authorizationSeq.current&&activeAccountId.current===requestedUser){
