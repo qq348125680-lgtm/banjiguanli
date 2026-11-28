@@ -33,8 +33,8 @@ function DossierSection({name,studentId,fetchPage}:{name:SectionName;studentId:s
    <span>{page} / {pages??'?'}</span><button type="button" disabled={loading||Boolean(error)||!result||Boolean(pages&&page>=pages)||(!pages&&result.items.length<pageSize)} onClick={()=>setPage(p=>p+1)}>下一页</button></div>
  </article>;
 }
-export function StudentDossierPanel({student,fetchPage,onClose}:{student?:StudentItem;fetchPage:FetchPage;onClose:()=>void}){
- return <section className="panel dossier-panel" aria-label="学生业务档案"><div className="panel-head"><div><h2>业务档案 · {student?.name??'学生'}</h2><p>班主任授权只读，按页查询数据库完整历史；各分类独立分页。</p></div><Button secondary onClick={onClose}>关闭档案</Button></div>
+export function StudentDossierPanel({student,fetchPage,onClose,onOpenCases}:{student?:StudentItem;fetchPage:FetchPage;onClose:()=>void;onOpenCases?:(studentId:string)=>void}){
+ return <section className="panel dossier-panel" aria-label="学生业务档案"><div className="panel-head"><div><h2>业务档案 · {student?.name??'学生'}</h2><p>班主任授权只读，按页查询数据库完整历史；各分类独立分页。</p></div><div className="dossier-extra-actions">{student&&onOpenCases&&<Button secondary onClick={()=>onOpenCases(student.id)}>查看事件工单</Button>}<Button secondary onClick={onClose}>关闭档案</Button></div></div>
   {student&&<div className="dossier-grid">{SECTIONS.map(name=><DossierSection key={`${student.id}:${name}`} name={name} studentId={student.id} fetchPage={fetchPage}/>)}</div>}
  </section>;
 }
