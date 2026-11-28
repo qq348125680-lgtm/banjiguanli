@@ -9,6 +9,7 @@ on:
       - 'sql/alpha45_STAGING_ONLY_SAFE_MIGRATION.sql'
       - 'sql/v7_event_cases_STAGING_ONLY*.sql'
       - 'sql/v7_guardian_links_STAGING_ONLY*.sql'
+      - 'sql/v7_case_source_links_STAGING_ONLY*.sql'
       - 'sql/alpha45_STAGING_ONLY_ROLLBACK.sql'
       - 'sql/alpha45_PREFLIGHT_READONLY.sql'
       - 'tests/postgres/**'
@@ -68,6 +69,14 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/guardian-links-lifecycle.sql
       - name: Roll back guardian link tables and functions
         run: psql -X -v ON_ERROR_STOP=1 -f sql/v7_guardian_links_STAGING_ONLY_ROLLBACK.sql
+      - name: Create six fake source tables and records as pre-existing business data
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/source-record-fixtures.sql
+      - name: Apply owner-verified original event source mapping
+        run: psql -X -v ON_ERROR_STOP=1 -f sql/v7_case_source_links_STAGING_ONLY.sql
+      - name: Test all six original record links, no duplicates, cross-student denial and no original-row writes
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/postgres/event-source-link-lifecycle.sql
+      - name: Roll back only new event case source mapping
+        run: psql -X -v ON_ERROR_STOP=1 -f sql/v7_case_source_links_STAGING_ONLY_ROLLBACK.sql
       - name: Roll back event case tables and RPCs without affecting existing data
         run: psql -X -v ON_ERROR_STOP=1 -f sql/v7_event_cases_STAGING_ONLY_ROLLBACK.sql
       - name: Roll back only added V7 database objects
