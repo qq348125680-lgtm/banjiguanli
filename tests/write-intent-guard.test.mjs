@@ -33,6 +33,8 @@ test('unavailable or denied session storage blocks writes',()=>{
  assert.equal(beginWriteIntent(null,'submit',scope,studentId).reason,'storage');
  const blocked={getItem:()=>null,setItem:()=>{throw Error('storage disabled')},removeItem:()=>{}};
  assert.equal(beginWriteIntent(blocked,'submit',scope,studentId).reason,'storage');
+ const silent={getItem:()=>null,setItem:()=>{},removeItem:()=>{}};
+ assert.equal(beginWriteIntent(silent,'submit',scope,studentId).reason,'storage');
 });
 test('different days and classes remain independently scoped',()=>{
  const s=storage();const tomorrow={...scope,day:'2026-11-29'};
