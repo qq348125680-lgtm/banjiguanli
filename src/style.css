@@ -137,3 +137,12 @@
 .digest-students strong{color:#425779}
 @media(max-width:850px){.digest-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.digest-students article{flex-wrap:wrap;gap:5px}}
 @media(max-width:700px){.attendance-digest{padding:12px}.attendance-digest>label{align-items:stretch;flex-direction:column}.attendance-digest>label select{width:100%}}
+
+/* Alpha41 extended: nine-person classroom-duty draft; never an actual assignment. */
+.duty-plan{border-top:1px solid #dce6f5;padding-top:17px;margin-top:18px}
+.duty-plan h3{font-size:15px;margin-bottom:8px}
+.duty-draft{display:grid;gap:7px;margin:12px 0}
+.duty-draft>div{display:grid;grid-template-columns:minmax(0,1fr) 130px 145px;gap:9px;align-items:center;padding:11px 13px;border:1px solid #e4eaf5;border-radius:10px;background:#fff;font-size:12px}
+.duty-draft strong{font-size:14px;color:#465d95}
+.duty-draft small{color:#8a96aa}
+@media(max-width:700px){.duty-draft>div{grid-template-columns:1fr auto;gap:5px}.duty-draft small{grid-column:1/-1}.duty-plan .duty-form{grid-template-columns:1fr}}
