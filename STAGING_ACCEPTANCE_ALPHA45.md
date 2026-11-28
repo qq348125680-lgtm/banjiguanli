@@ -1,6 +1,6 @@
 # Alpha 45 · V7 双账号隔离验收和恢复演练
 
-**状态：准备完成 / 尚未执行。** 此文档不是生产库上线授权；不得把真实学生身份信息、身份证号、手机号或 Supabase 密钥提交 GitHub。
+**状态：隔离 PostgreSQL 17 真实权限/事务/并发/回滚/虚构数据备份恢复已通过；独立 Supabase 项目登录联调尚未执行。** 此文档不是生产库上线授权；不得把真实学生身份信息、身份证号、手机号或 Supabase 密钥提交 GitHub。
 
 ## 这次核对的现有事实
 
@@ -11,6 +11,16 @@
 - 现有 `submissions_cadre_insert` RLS 检查班干部身份和待审核状态，但没有同时在策略中检查 `student_id` 是否属于 `class_id`。
 - 班干部不具有完整 `students` 的直接读取策略；通过普通 RLS 子查询强制校验学生归属可能误拒合法记录。
 - `v7_cadre_roster` 和 `v7_review_attendance` 尚未安装。正式库没有执行 Alpha 45 迁移。
+
+## 目前已执行的隔离 PostgreSQL 自动化测试
+
+GitHub Actions：[V7 isolated PostgreSQL17 RLS and transaction contract](https://github.com/qq348125680-lgtm/banjiguanli/actions/runs/46127146493)。
+
+- 已通过虚构 A/B 班级、两名有效班干部、停用班干部和匿名角色的 RLS / 特权函数测试
+- 已通过跨班学生与归档学生写入拒绝、同日跨干部考勤去重、同日两条合法请假不被阻止
+- 已通过独立连接同时审批同一申请（一次成功，另一笔拒绝），以及 SQL 对象回滚后的记录保留
+- 已执行 pg_dump / pg_restore：人为删除虚构考勤后在新数据库恢复，检查考勤、请假记录、关联完整性、RLS
+- **仍未在实际 Supabase 隔离项目上测试 Auth 登录、真实 JWT、数据库迁移备份、停用与手机端全流程。**
 
 ## 上线前的准备
 
