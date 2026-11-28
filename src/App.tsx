@@ -15,6 +15,7 @@ import {PointRulesPanel} from './components/PointRulesPanel';
 import {ClassOrganizationPanel} from './components/ClassOrganizationPanel';
 import {EventCenterPanel} from './components/EventCenterPanel';
 import {EventCaseBoard} from './components/EventCaseBoard';
+import {TaskInboxPanel} from './components/TaskInboxPanel';
 import {RelationshipCenterPanel} from './components/RelationshipCenterPanel';
 import {buildDelegateEventFeed} from './lib/class-event-system.mjs';
 import {AttendanceEntryPanel} from './components/AttendanceEntryPanel';
@@ -67,6 +68,7 @@ export default function App(){
  const [recordTab,setRecordTab]=useState<'activity'|'rules'|'events'|'cases'>('activity');
  const [recordFocusKind,setRecordFocusKind]=useState('考勤');
  const [caseDraft,setCaseDraft]=useState<{studentId:string;kind:string;title:string}|null>(null);
+ const [caseStudentId,setCaseStudentId]=useState(''),[caseFocusId,setCaseFocusId]=useState('');
  const [linkedStudentId,setLinkedStudentId]=useState('');
  const [cadreDirectory,setCadreDirectory]=useState<{uid:string;name:string|null;duty:string;enabled:boolean}[]>([]);
  const [authorizationChecking,setAuthorizationChecking]=useState(false);
@@ -80,7 +82,7 @@ export default function App(){
  const isAuthorizedClass=Boolean(classId)&&authorizedClassIds.includes(classId);
  const owned=classes.some(c=>c.id===classId);
  useEffect(()=>{
-  setDossierId('');setStudentTab('roster');setRecordTab('activity');setCaseDraft(null);setLinkedStudentId('');setReviewNotes({});setBusyId('');setFeedback('');
+  setDossierId('');setStudentTab('roster');setRecordTab('activity');setCaseDraft(null);setCaseStudentId('');setCaseFocusId('');setLinkedStudentId('');setReviewNotes({});setBusyId('');setFeedback('');
   const marker=user?.id&&classId?inspectPendingMarker(browserSessionStorage(),'review',{accountId:user.id,classId}):null;
   setUncertainReview(marker?.id&&user?{accountId:user.id,classId,id:marker.id}:null);
  },[classId,user?.id]);
@@ -98,6 +100,10 @@ export default function App(){
   const result=await bridges.reader.mySubmissions(classId,{page:1,pageSize:20});
   return buildDelegateEventFeed(result.items,roster);
  },[bridges,user?.id,classId,owned,isAuthorizedClass,authorizationBlocked,authorizationChecking,roster]);
+ const fetchTaskInbox=useCallback(async()=>{
+  if(!bridges||!user||!classId||!isAuthorizedClass||authorizationBlocked||authorizationChecking)throw Error('当前无权读取工单待办');
+  return bridges.cases.taskInbox(classId);
+ },[bridges,user?.id,classId,isAuthorizedClass,authorizationBlocked,authorizationChecking]);
  const fetchRelationships=useCallback(async()=>{
   if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking)throw Error('当前身份不能查看用户关系');
   const className=classes.find(c=>c.id===classId)?.name??'当前班级';
@@ -109,9 +115,15 @@ export default function App(){
  function openEventRecord(kind:string){
   setRecordFocusKind(kind);setRecordTab('activity');selectView('records');
  }
+ function openExactCase(caseId:string){
+  setCaseDraft(null);setCaseStudentId('');setCaseFocusId(caseId);setRecordTab('cases');selectView('records');
+ }
+ function openStudentCases(studentId:string){
+  setCaseDraft(null);setCaseStudentId(studentId);setCaseFocusId('');setRecordTab('cases');selectView('records');
+ }
  function openCaseFromEvent(studentId:string,kind:string,summary:string){
   if(!canWrite||!owned)return;
-  setCaseDraft({studentId,kind,title:(kind+' · '+summary).slice(0,80)});
+  setCaseStudentId('');setCaseFocusId('');setCaseDraft({studentId,kind,title:(kind+' · '+summary).slice(0,80)});
   setRecordTab('cases');selectView('records');
  }
  function openLinkedEvents(studentId:string){
@@ -452,24 +464,24 @@ export default function App(){
  <RecoveryInbox items={recoveryQueue.items} unavailable={recoveryQueue.unavailable} truncated={recoveryQueue.truncated} classNames={recoveryClassNames} onLocate={locateRecovery}/>
  {problem&&<Message kind="error" message={problem}/>}{feedback&&<Message kind="success" message={feedback}/>}{loading&&<div className="muted loading" role="status">正在读取数据…</div>}
  {!classId?<div className="panel"><h2>暂无可访问班级</h2><p className="muted">请确认班主任所有权或班干部授权状态；不要通过浏览器密钥绕过。</p><Button onClick={()=>void verifiedRefresh()} secondary>重新验证班级授权</Button></div>:<>
- {view==='dashboard'&&<><div className="stats"><div className="metric"><span>学生</span><b>{!rosterLoaded?'—':students.length}</b><small>当前授权班级 · 无法读取不显示为零</small></div><div className="metric"><span>待审核</span><b>{owned?pendingLabel(pendingCount):'—'}</b><small>全班精确计数；失败显示—</small></div><div className="metric"><span>账号身份</span><b className="metric-word">{owned?'班主任':'班干部'}</b><small>来自现有权限</small></div></div><section className="panel"><h2>常用操作</h2><div className="quick-grid"><Button onClick={()=>selectView('students')} secondary>学生查询</Button><Button onClick={()=>selectView('entry')} secondary>考勤提交</Button><Button onClick={()=>selectView('review')} secondary>审核记录</Button><Button onClick={()=>{setLinkedStudentId('');setRecordTab('events');selectView('records')}} secondary>事件中心</Button><Button onClick={()=>{setCaseDraft(null);setRecordTab('cases');selectView('records')}} secondary>事件工单</Button><Button onClick={()=>{setLinkedStudentId('');setStudentTab('relations');selectView('students')}} secondary>用户关系</Button></div></section></>}
+ {view==='dashboard'&&<><div className="stats"><div className="metric"><span>学生</span><b>{!rosterLoaded?'—':students.length}</b><small>当前授权班级 · 无法读取不显示为零</small></div><div className="metric"><span>待审核</span><b>{owned?pendingLabel(pendingCount):'—'}</b><small>全班精确计数；失败显示—</small></div><div className="metric"><span>账号身份</span><b className="metric-word">{owned?'班主任':'班干部'}</b><small>来自现有权限</small></div></div><section className="panel"><h2>常用操作</h2><div className="quick-grid"><Button onClick={()=>selectView('students')} secondary>学生查询</Button><Button onClick={()=>selectView('entry')} secondary>考勤提交</Button><Button onClick={()=>selectView('review')} secondary>审核记录</Button><Button onClick={()=>{setLinkedStudentId('');setRecordTab('events');selectView('records')}} secondary>事件中心</Button><Button onClick={()=>{setCaseDraft(null);setCaseStudentId('');setCaseFocusId('');setRecordTab('cases');selectView('records')}} secondary>事件工单</Button><Button onClick={()=>{setLinkedStudentId('');setStudentTab('relations');selectView('students')}} secondary>用户关系</Button></div></section>{!authorizationChecking&&!authorizationBlocked&&isAuthorizedClass&&<TaskInboxPanel key={`${user.id}:${classId}:inbox`} load={fetchTaskInbox} roster={roster} onOpen={openExactCase}/>}</>}
  {view==='students'&&<>
    {owned&&<div className="student-center-tabs" role="group" aria-label="学生中心子模块"><button type="button" aria-pressed={studentTab==='roster'} className={studentTab==='roster'?'active':''} onClick={()=>setStudentTab('roster')}>花名册与档案</button><button type="button" aria-pressed={studentTab==='organization'} className={studentTab==='organization'?'active':''} onClick={()=>setStudentTab('organization')}>座位 · 宿舍 · 班干部</button><button type="button" aria-pressed={studentTab==='relations'} className={studentTab==='relations'?'active':''} onClick={()=>{setLinkedStudentId('');setStudentTab('relations')}}>用户关系</button></div>}
-   {(!owned||studentTab==='roster')&&<><StudentsPanel students={students} search={search} onSearch={setSearch} loading={loading} onSelect={owned?setDossierId:undefined} selectedId={dossierId}/>{owned&&dossierId&&<StudentDossierPanel student={students.find(st=>st.id===dossierId)} fetchPage={fetchDossierPage} onClose={()=>setDossierId('')}/>}</>}
+   {(!owned||studentTab==='roster')&&<><StudentsPanel students={students} search={search} onSearch={setSearch} loading={loading} onSelect={owned?setDossierId:undefined} selectedId={dossierId}/>{owned&&dossierId&&<StudentDossierPanel student={students.find(st=>st.id===dossierId)} fetchPage={fetchDossierPage} onOpenCases={openStudentCases} onClose={()=>setDossierId('')}/>}</>}
    {owned&&studentTab==='organization'&&<ClassOrganizationPanel key={`${user.id}:${classId}`} load={fetchClassOrganization}/>}
    {owned&&studentTab==='relations'&&<RelationshipCenterPanel key={`${user.id}:${classId}:relations`} load={fetchRelationships} onStudent={openEventStudent} onEvents={openLinkedEvents} focusStudentId={linkedStudentId} onClearFocus={()=>setLinkedStudentId('')}/>}  
   </>}
  {view==='entry'&&<AttendanceEntryPanel roster={roster} completed={submittedSession} uncertainStudentId={uncertainSubmit?.accountId===user.id&&uncertainSubmit?.classId===classId&&uncertainSubmit?.day===day?uncertainSubmit.studentId:null} verifyUncertain={()=>void reconcileUncertainSubmission()} selected={selected} setSelected={setSelected} loading={loading} busy={Boolean(busyId)} day={day} setDay={setDay} attendance={attendance} setAttendance={setAttendance} note={note} setNote={setNote} classId={classId} owned={owned} canSubmit={canSubmit&&!Boolean(uncertainSubmit?.accountId===user.id&&uncertainSubmit?.classId===classId&&uncertainSubmit?.day===day)} submit={()=>void submit()}/> }
  {view==='review'&&<ReviewPanel owned={owned} items={items} names={names} total={total} page={page} pageSize={pageSize} filter={filter} loading={loading} busy={Boolean(busyId)} cadreDirectory={cadreDirectory} uncertainReviewId={uncertainReview?.accountId===user.id&&uncertainReview?.classId===classId?uncertainReview.id:null} verifyReview={()=>void reconcileUncertainReview()} canWrite={canWrite&&!Boolean(uncertainReview?.accountId===user.id&&uncertainReview?.classId===classId)} notes={reviewNotes} setNotes={setReviewNotes} setFilter={setFilter} setPage={setPage} setPageSize={setPageSize} review={(id,action)=>void review(id,action)}/> }
- {view==='records'&&(!owned?<><div className="student-center-tabs" role="group" aria-label="班干部事件子模块"><button type="button" aria-pressed={recordTab!=='cases'} className={recordTab!=='cases'?'active':''} onClick={()=>setRecordTab('events')}>我的事件</button><button type="button" aria-pressed={recordTab==='cases'} className={recordTab==='cases'?'active':''} onClick={()=>setRecordTab('cases')}>协作工单</button></div>
+ {view==='records'&&(!owned?<><div className="student-center-tabs" role="group" aria-label="班干部事件子模块"><button type="button" aria-pressed={recordTab!=='cases'} className={recordTab!=='cases'?'active':''} onClick={()=>setRecordTab('events')}>我的事件</button><button type="button" aria-pressed={recordTab==='cases'} className={recordTab==='cases'?'active':''} onClick={()=>{setCaseStudentId('');setCaseFocusId('');setRecordTab('cases')}}>协作工单</button></div>
    {recordTab!=='cases'&&<EventCenterPanel key={`${user.id}:${classId}:own-events`} load={fetchEventFeed} owned={false} onStudent={openEventStudent} onRecord={openEventRecord} focusStudentId={linkedStudentId} onClearFocus={()=>setLinkedStudentId('')}/>}
-   {recordTab==='cases'&&<EventCaseBoard key={`${user.id}:${classId}:cases`} api={bridges!.cases} classId={classId} userId={user.id} owned={false} canWrite={canWrite} students={roster} onStudent={openEventStudent}/>}</>:<><div className="student-center-tabs" role="group" aria-label="班务记录子模块">
+   {recordTab==='cases'&&<EventCaseBoard key={`${user.id}:${classId}:cases`} api={bridges!.cases} classId={classId} userId={user.id} owned={false} canWrite={canWrite} students={roster} onStudent={openEventStudent} initialStudentId={caseStudentId} initialCaseId={caseFocusId}/>}</>:<><div className="student-center-tabs" role="group" aria-label="班务记录子模块">
    <button type="button" className={recordTab==='activity'?'active':''} aria-pressed={recordTab==='activity'} onClick={()=>setRecordTab('activity')}>业务记录</button>
-   <button type="button" className={recordTab==='rules'?'active':''} aria-pressed={recordTab==='rules'} onClick={()=>setRecordTab('rules')}>积分与违纪规则</button><button type="button" className={recordTab==='events'?'active':''} aria-pressed={recordTab==='events'} onClick={()=>{setLinkedStudentId('');setRecordTab('events')}}>事件中心</button><button type="button" className={recordTab==='cases'?'active':''} aria-pressed={recordTab==='cases'} onClick={()=>{setCaseDraft(null);setRecordTab('cases')}}>事件工单</button></div>
+   <button type="button" className={recordTab==='rules'?'active':''} aria-pressed={recordTab==='rules'} onClick={()=>setRecordTab('rules')}>积分与违纪规则</button><button type="button" className={recordTab==='events'?'active':''} aria-pressed={recordTab==='events'} onClick={()=>{setLinkedStudentId('');setRecordTab('events')}}>事件中心</button><button type="button" className={recordTab==='cases'?'active':''} aria-pressed={recordTab==='cases'} onClick={()=>{setCaseDraft(null);setCaseStudentId('');setCaseFocusId('');setRecordTab('cases')}}>事件工单</button></div>
    {recordTab==='activity'&&<ClassRecordsPanel key={`${user.id}:${classId}:${recordFocusKind}`} load={fetchClassRecords} initialKind={recordFocusKind}/>}
    {recordTab==='events'&&<EventCenterPanel key={`${user.id}:${classId}:events`} load={fetchEventFeed} owned={owned} onStudent={openEventStudent} onRecord={openEventRecord} onCreateCase={canWrite?openCaseFromEvent:undefined} onRelations={openLinkedRelations} focusStudentId={linkedStudentId} onClearFocus={()=>setLinkedStudentId('')}/>} 
    {recordTab==='rules'&&<PointRulesPanel key={`${user.id}:${classId}`} load={fetchPointRules}/>}
-   {recordTab==='cases'&&<EventCaseBoard key={`${user.id}:${classId}:cases`} api={bridges!.cases} classId={classId} userId={user.id} owned={true} canWrite={canWrite} students={roster} onStudent={openEventStudent} initialDraft={caseDraft}/>}</>)}
+   {recordTab==='cases'&&<EventCaseBoard key={`${user.id}:${classId}:cases`} api={bridges!.cases} classId={classId} userId={user.id} owned={true} canWrite={canWrite} students={roster} onStudent={openEventStudent} initialDraft={caseDraft} initialStudentId={caseStudentId} initialCaseId={caseFocusId}/>}</>)}
   {view==='archive'&&owned&&<AuditPanel audits={audits} total={auditTotal} page={page} pageSize={pageSize} loading={loading} setPage={setPage} setPageSize={setPageSize}/>}
  {view==='reports'&&<ReportsPanel items={items} rosterCount={students.length} rosterLoaded={rosterLoaded} pendingCount={pendingCount} owned={owned} total={total} loading={loading} onReview={()=>selectView('review')}/>}
   {view==='archive'&&!owned&&<section className="panel placeholder"><div className="placeholder-icon">✧</div><h2>工作档案</h2><p>当前身份无法读取全班操作记录。正式归档功能仍使用旧版系统。</p><Button onClick={()=>selectView('dashboard')} secondary>返回工作台</Button></section>}
