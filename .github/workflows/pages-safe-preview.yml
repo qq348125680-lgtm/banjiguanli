@@ -27,6 +27,7 @@ jobs:
       VITE_SUPABASE_URL: ''
       VITE_SUPABASE_PUBLISHABLE_KEY: ''
       VITE_ENABLE_WORKFLOW_WRITES: 'false'
+      VITE_V7_WRITE_GATE_ACKNOWLEDGED: 'false'
     steps:
       - name: Checkout isolated test branch
         uses: actions/checkout@v4
