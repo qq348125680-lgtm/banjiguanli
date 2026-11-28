@@ -1,4 +1,4 @@
-import {loadPendingMarker,savePendingMarker,clearPendingMarker} from './pending-write-marker.mjs';
+import {loadPendingMarker,savePendingMarker,clearPendingMarker,pendingMarkerKey} from './pending-write-marker.mjs';
 
 /** Persist an intent BEFORE starting a remote write. Missing browser storage
  * must fail closed rather than risk losing the recovery marker on refresh.
@@ -6,8 +6,15 @@ import {loadPendingMarker,savePendingMarker,clearPendingMarker} from './pending-
  */
 export function beginWriteIntent(storage,kind,scope,id){
  if(!storage)return {ok:false,reason:'storage'};
- const existing=loadPendingMarker(storage,kind,scope);
- if(existing)return {ok:false,reason:'pending',id:existing};
+ // Treat any pre-existing value as evidence, even if its JSON/timestamp is
+ // damaged. Never silently overwrite a possible interrupted operation.
+ let raw;
+ try{raw=storage.getItem(pendingMarkerKey(kind,scope))}
+ catch{return {ok:false,reason:'storage'}}
+ if(raw!==null&&raw!==undefined){
+  const existing=loadPendingMarker(storage,kind,scope);
+  return existing?{ok:false,reason:'pending',id:existing}:{ok:false,reason:'invalid'};
+ }
  if(!savePendingMarker(storage,kind,scope,id))return {ok:false,reason:'storage'};
  // A browser/storage shim may silently drop writes; require a read-back.
  if(loadPendingMarker(storage,kind,scope)!==id)return {ok:false,reason:'storage'};
