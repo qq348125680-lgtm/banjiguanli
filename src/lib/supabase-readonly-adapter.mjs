@@ -40,6 +40,13 @@ export function createReadOnlyBridge(client){
   if(error)throw error;return {items:data??[],count:count??null,page,pageSize};
  }
 
+ /** Read existing class points rules, preserving rule meanings and disabled flags. */
+ async function pointRulesForOwner(classId){
+  assertUuid(classId);await verifyOwner(classId);
+  const {data,error}=await client.from('point_rules').select('id,code,label,dimension,unit_points,threshold,converted_points,enabled,source_note').eq('class_id',classId).order('label').limit(300);
+  if(error)throw error;
+  return data??[];
+ }
  /** Return only the owner-authorized active class's paged business records; no writes. */
  async function classRecordsForOwner(classId,kind,{page=1,pageSize=10,studentId='',startOn='',endOn=''}={}){
   assertUuid(classId);
@@ -127,5 +134,5 @@ export function createReadOnlyBridge(client){
   }));
   return {student,sections:Object.fromEntries(results)};
  }
- return Object.freeze({user,ownedClasses,authorizedClasses,studentsForOwner,submissionsForOwner,mySubmissions,pendingCountForOwner,auditForOwner,dossierForOwner,dossierPageForOwner,classRecordsForOwner,classOrganizationForOwner});
+ return Object.freeze({user,ownedClasses,authorizedClasses,studentsForOwner,submissionsForOwner,mySubmissions,pendingCountForOwner,auditForOwner,dossierForOwner,dossierPageForOwner,classRecordsForOwner,classOrganizationForOwner,pointRulesForOwner});
 }
