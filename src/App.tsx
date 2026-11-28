@@ -24,7 +24,9 @@ import {invalidateSelectedClass} from './lib/authorization-race.mjs';
 import {decideReadFailure} from './lib/read-failure-policy.mjs';
 import {withReadDeadline} from './lib/read-deadline.mjs';
 import {withUncertainWriteDeadline} from './lib/write-deadline.mjs';
-import {browserSessionStorage,loadPendingMarker,clearPendingMarker} from './lib/pending-write-marker.mjs';
+import {browserSessionStorage} from './lib/pending-write-marker.mjs';
+import {inspectPendingMarker,listAuthorizedPendingMarkers} from './lib/pending-marker-index.mjs';
+import {RecoveryInbox} from './components/RecoveryInbox';
 import {beginWriteIntent,finishKnownWrite,hasConfirmedAttendance} from './lib/write-intent-guard.mjs';
 
 type View='dashboard'|'students'|'entry'|'review'|'records'|'reports'|'archive';
@@ -36,6 +38,7 @@ export default function App(){
  const [classes,setClasses]=useState<ClassItem[]>([]),[delegated,setDelegated]=useState<DelegateItem[]>([]),[classId,setClassId]=useState('');
  const [view,setView]=useState<View>('dashboard'),[mobile,setMobile]=useState(false),[loading,setLoading]=useState(false),[problem,setProblem]=useState('');
  const [previewLayout,setPreviewLayout]=useState(false);
+ const [recoveryRevision,setRecoveryRevision]=useState(0);
  const [students,setStudents]=useState<StudentItem[]>([]),[roster,setRoster]=useState<StudentItem[]>([]),[rosterLoaded,setRosterLoaded]=useState(false),[items,setItems]=useState<Submission[]>([]),[total,setTotal]=useState<number|null>(null);
  const [page,setPage]=useState(1),[pageSize,setPageSize]=useState(10),[filter,setFilter]=useState('全部'),[search,setSearch]=useState('');
  const [selected,setSelected]=useState(''),[submittedSession,setSubmittedSession]=useState<string[]>([]),[day,setDay]=useState(dateToday()),[attendance,setAttendance]=useState('出勤'),[note,setNote]=useState('');
@@ -61,12 +64,17 @@ export default function App(){
  const [authorizationChecking,setAuthorizationChecking]=useState(false);
  const [authorizationBlocked,setAuthorizationBlocked]=useState(false);
  const authorizedClassIds=useMemo(()=>[...classes.map(c=>c.id),...delegated.map(d=>d.class_id)],[classes,delegated]);
+ const recoveryQueue=useMemo(()=>user?.id?listAuthorizedPendingMarkers(browserSessionStorage(),user.id,authorizedClassIds):{items:[],unavailable:false,truncated:false},[user?.id,authorizedClassIds,recoveryRevision]);
+ const recoveryClassNames=useMemo(()=>new Map<string,string>([
+  ...classes.map(c=>[c.id,c.name] as [string,string]),
+  ...delegated.map(d=>[d.class_id,`授权班级 · ${d.duty||'班干部'}`] as [string,string])
+ ]),[classes,delegated]);
  const isAuthorizedClass=Boolean(classId)&&authorizedClassIds.includes(classId);
  const owned=classes.some(c=>c.id===classId);
  useEffect(()=>{
   setDossierId('');setStudentTab('roster');setRecordTab('activity');setReviewNotes({});setBusyId('');setFeedback('');
-  const id=user?.id&&classId?loadPendingMarker(browserSessionStorage(),'review',{accountId:user.id,classId}):null;
-  setUncertainReview(id&&user?{accountId:user.id,classId,id}:null);
+  const marker=user?.id&&classId?inspectPendingMarker(browserSessionStorage(),'review',{accountId:user.id,classId}):null;
+  setUncertainReview(marker?.id&&user?{accountId:user.id,classId,id:marker.id}:null);
  },[classId,user?.id]);
  const fetchDossierPage=useCallback(async(section:'考勤'|'请假'|'违纪'|'积分'|'值日',targetPage:number,targetPageSize:number):Promise<DossierPage>=>{
   if(!bridges||!user||!classId||!owned||!isAuthorizedClass||authorizationBlocked||authorizationChecking||!dossierId)throw new Error('当前无权读取档案');
@@ -250,14 +258,17 @@ export default function App(){
   const intentScope={accountId:submittedAccount,classId:submittedClass,day:submittedDay};
   const intent=beginWriteIntent(browserSessionStorage(),'submit',intentScope,submittedStudent);
   if(!intent.ok){
+   setRecoveryRevision(v=>v+1);
    setProblem(intent.reason==='storage'?'当前浏览器不能安全保存未确认操作标记，已阻止本次提交；请检查隐私模式或浏览器存储设置。':intent.reason==='invalid'?'发现损坏或过期的未确认考勤标记。为避免重复写入，已保留该标记并停止本次提交；请先在旧版核对记录。':'本班本日还有尚未确认的提交，请先核对服务器结果。');
    return;
   }
   operationLock.current=true;
+  setRecoveryRevision(v=>v+1);
   setBusyId('submit');setProblem('');setFeedback('');
   try{
    await withUncertainWriteDeadline(()=>bridges.writer.submit({classId:submittedClass,studentId:submittedStudent,entryType:'考勤',date:submittedDay,status:attendance,note}));
    finishKnownWrite(browserSessionStorage(),'submit',intentScope,submittedStudent);
+   setRecoveryRevision(v=>v+1);
    if(scopeRef.current===operationScope){
     setUncertainSubmit(null);setNote('');setPage(1);
     setSubmittedSession(prev=>markSubmissionConfirmed(prev,submittedStudent));
@@ -267,7 +278,7 @@ export default function App(){
    }
   }catch(e){
    const unknown=uncertainWriteOutcome(e);
-   if(!unknown)finishKnownWrite(browserSessionStorage(),'submit',intentScope,submittedStudent);
+   if(!unknown){finishKnownWrite(browserSessionStorage(),'submit',intentScope,submittedStudent);setRecoveryRevision(v=>v+1)}
    if(scopeRef.current===operationScope){
     if(unknown){
      setUncertainSubmit({accountId:submittedAccount,classId:submittedClass,day:submittedDay,studentId:submittedStudent});
@@ -286,7 +297,8 @@ export default function App(){
    if(scopeRef.current!==`${pending.accountId}:${pending.classId}:${pending.day}`)return;
    if(hasConfirmedAttendance(records)){
     setSubmittedSession(prev=>markSubmissionConfirmed(prev,pending.studentId));
-    clearPendingMarker(browserSessionStorage(),'submit',{accountId:pending.accountId,classId:pending.classId,day:pending.day});
+    finishKnownWrite(browserSessionStorage(),'submit',{accountId:pending.accountId,classId:pending.classId,day:pending.day},pending.studentId);
+    setRecoveryRevision(v=>v+1);
     setUncertainSubmit(null);
     setFeedback('已在服务器查询到该学生本日的考勤申请；请到「我的提交记录」核对状态，不要再次提交。');
     await loadData();
@@ -305,14 +317,17 @@ export default function App(){
   const intentScope={accountId:account,classId:submittedClass};
   const intent=beginWriteIntent(browserSessionStorage(),'review',intentScope,id);
   if(!intent.ok){
+   setRecoveryRevision(v=>v+1);
    setProblem(intent.reason==='storage'?'当前浏览器不能安全保存未确认审核标记，已阻止本次审核；请检查浏览器存储设置。':intent.reason==='invalid'?'发现损坏或过期的未确认审核标记。已保留标记并暂停本班审核；请先在旧版核对原申请状态。':'本班有上一笔审核结果尚未确认，请先核对服务器状态。');
    return;
   }
   operationLock.current=true;
+  setRecoveryRevision(v=>v+1);
   setBusyId(id);setProblem('');setFeedback('');
   try{
    await withUncertainWriteDeadline(()=>bridges.writer.review(id,action,reviewNotes[id]??''));
    finishKnownWrite(browserSessionStorage(),'review',intentScope,id);
+   setRecoveryRevision(v=>v+1);
    if(activeAccountId.current===account&&scopeRef.current.startsWith(`${account}:${submittedClass}:`))setUncertainReview(null);
    if(scopeRef.current===operationScope){
     await loadData();
@@ -320,7 +335,7 @@ export default function App(){
    }
   }catch(e){
    const unknown=uncertainWriteOutcome(e);
-   if(!unknown)finishKnownWrite(browserSessionStorage(),'review',intentScope,id);
+   if(!unknown){finishKnownWrite(browserSessionStorage(),'review',intentScope,id);setRecoveryRevision(v=>v+1)}
    if(activeAccountId.current===account&&scopeRef.current.startsWith(`${account}:${submittedClass}:`)){
     if(unknown){
      setUncertainReview({accountId:account,classId:submittedClass,id});
@@ -338,7 +353,8 @@ export default function App(){
    const record=await withReadDeadline(()=>bridges.writer.verifyReview({classId:pending.classId,submissionId:pending.id}));
    if(activeAccountId.current!==pending.accountId||classId!==pending.classId)return;
    if(record.status==='已通过'||record.status==='已驳回'){
-    clearPendingMarker(browserSessionStorage(),'review',{accountId:pending.accountId,classId:pending.classId});
+    finishKnownWrite(browserSessionStorage(),'review',{accountId:pending.accountId,classId:pending.classId},pending.id);
+    setRecoveryRevision(v=>v+1);
     setUncertainReview(null);
     await loadData();
     setFeedback('服务器已确认此申请状态：'+record.status+'。请核对实际记录，不要再次批准。');
@@ -354,10 +370,26 @@ export default function App(){
  // Page count is now owned by ReviewPanel.
  useEffect(()=>{
   setSubmittedSession([]);setSelected('');
-  const studentId=user?.id&&classId&&isValidDate(day)?loadPendingMarker(browserSessionStorage(),'submit',{accountId:user.id,classId,day}):null;
-  setUncertainSubmit(studentId&&user?{accountId:user.id,classId,day,studentId}:null);
+  const marker=user?.id&&classId&&isValidDate(day)?inspectPendingMarker(browserSessionStorage(),'submit',{accountId:user.id,classId,day}):null;
+  setUncertainSubmit(marker?.id&&user?{accountId:user.id,classId,day,studentId:marker.id}:null);
  },[classId,day,user?.id]);
  function selectView(next:View){requestSeq.current++;setDossierId('');setView(next);setPage(1);setMobile(false);setFeedback('')}
+ function locateRecovery(item:{kind:string;classId:string;day:string|null;id:string|null}){
+  if(!user||!item.id||!authorizedClassIds.includes(item.classId)||authorizationBlocked||authorizationChecking)return;
+  if(item.kind==='submit'&&(!item.day||!isValidDate(item.day)))return;
+  if(item.kind!=='submit'&&item.kind!=='review')return;
+  if(item.kind==='review'&&!classes.some(c=>c.id===item.classId)){
+   setProblem('本账号当前不是该班班主任，不能直接核对审核结果。请从原系统联系有权限的班主任。');return;
+  }
+  if(item.classId!==classId){
+   invalidateSelectedClass(authorizationSeq,requestSeq);
+   loadedScopeRef.current='';
+   setStudents([]);setRoster([]);setRosterLoaded(false);setItems([]);setTotal(null);setAudits([]);setAuditTotal(null);setPendingCount(null);
+   setClassId(item.classId);setSubmittedSession([]);setSelected('');
+  }
+  if(item.kind==='submit')setDay(item.day!);
+  selectView(item.kind==='submit'?'entry':'review');
+ }
  const accountSnapshotPending=activeAccountId.current!==(user?.id??'');
  if(accountSnapshotPending)return <div className="auth-shell"><section className="auth-card"><h1>正在切换登录身份</h1><p>旧账号数据已暂时隐藏，正在重新确认当前账号的班级授权。</p></section></div>;
  // During a permission revalidation, do not render an old class roster or audit snapshot.
@@ -371,6 +403,7 @@ export default function App(){
  return <div className="shell"><aside className={`sidebar ${mobile?'shown':''}`}><div className="brand"><div className="brand-icon">✦</div><div><strong>智慧班务</strong><small>SMART CLASS · ALPHA 47</small></div><button className="icon-btn close-nav" onClick={()=>setMobile(false)} aria-label="关闭菜单"><X size={20}/></button></div><div className="section-label">工作导航</div><nav>{nav.map(([key,label,Icon])=><button key={key} className={`nav-link ${view===key?'active':''}`} onClick={()=>selectView(key)}><Icon size={19}/><span>{label}</span></button>)}</nav><div className="side-foot"><div className="sidebar-hint">新旧并行 · 正式业务仍保留旧版</div><button className="nav-link" onClick={()=>void logout()}><LogOut size={19}/>退出登录</button></div></aside>{mobile&&<button className="scrim" aria-label="关闭侧边栏" onClick={()=>setMobile(false)}/>}
  <div className="main"><header className="topbar"><button className="icon-btn hamburger" onClick={()=>setMobile(true)} aria-label="打开菜单"><Menu size={22}/></button><span>智慧班务 / <strong>{nav.find(x=>x[0]===view)?.[1]}</strong></span><div className="top-right"><span className="version">V7.0 · Alpha 47</span><button className="icon-btn" onClick={()=>void verifiedRefresh()} title="重新校验授权并刷新" aria-label="刷新数据"><RefreshCw size={18}/></button></div></header><main className="content"><div className="top-heading"><div><div className="eyebrow">CLASS WORKSPACE / 安全并行改造</div><h1>{nav.find(x=>x[0]===view)?.[1]}</h1><p>常用事项集中操作，数据按登录身份和班级权限展示。</p></div><label className="class-picker">当前班级<select value={classId} onChange={e=>{invalidateSelectedClass(authorizationSeq,requestSeq);setAuthorizationChecking(false);setLoading(false);setProblem('');loadedScopeRef.current='';setStudents([]);setRoster([]);setRosterLoaded(false);setItems([]);setTotal(null);setAudits([]);setAuditTotal(null);setPendingCount(null);setClassId(e.target.value);setPage(1);setSelected('');setSubmittedSession([])}}><option value="">请选择班级</option>{classes.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}{delegated.map(c=><option key={c.class_id} value={c.class_id}>授权班级 · {c.duty||c.class_id.slice(0,8)}</option>)}</select></label></div>
  <div className="notice">当前为 Alpha 47 开发版本。{writesEnabled?'写入开关已开启：仍需先完成隔离环境的权限与事务验收。':'默认只读：正式提交和审批已锁定。'} {legacyNotice}</div>
+ <RecoveryInbox items={recoveryQueue.items} unavailable={recoveryQueue.unavailable} truncated={recoveryQueue.truncated} classNames={recoveryClassNames} onLocate={locateRecovery}/>
  {problem&&<Message kind="error" message={problem}/>}{feedback&&<Message kind="success" message={feedback}/>}{loading&&<div className="muted loading" role="status">正在读取数据…</div>}
  {!classId?<div className="panel"><h2>暂无可访问班级</h2><p className="muted">请确认班主任所有权或班干部授权状态；不要通过浏览器密钥绕过。</p><Button onClick={()=>void verifiedRefresh()} secondary>重新验证班级授权</Button></div>:<>
  {view==='dashboard'&&<><div className="stats"><div className="metric"><span>学生</span><b>{!rosterLoaded?'—':students.length}</b><small>当前授权班级 · 无法读取不显示为零</small></div><div className="metric"><span>待审核</span><b>{owned?pendingLabel(pendingCount):'—'}</b><small>全班精确计数；失败显示—</small></div><div className="metric"><span>账号身份</span><b className="metric-word">{owned?'班主任':'班干部'}</b><small>来自现有权限</small></div></div><section className="panel"><h2>常用操作</h2><div className="quick-grid"><Button onClick={()=>selectView('students')} secondary>学生查询</Button><Button onClick={()=>selectView('entry')} secondary>考勤提交</Button><Button onClick={()=>selectView('review')} secondary>审核记录</Button></div></section></>}
