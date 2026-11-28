@@ -242,7 +242,7 @@ export default function App(){
  async function logout(){await client?.auth.signOut()}
  async function submit(){
   if(!bridges||!canSubmit||!canSubmitToRoster({roster,studentId:selected,classId,owned})||!isValidDate(day)||submittedSession.includes(selected)||operationLock.current)return;
-  if(uncertainSubmit&&uncertainSubmit.accountId===user?.id&&uncertainSubmit.classId===classId&&uncertainSubmit.day===day&&true){
+  if(uncertainSubmit&&uncertainSubmit.accountId===user?.id&&uncertainSubmit.classId===classId&&uncertainSubmit.day===day){
    setProblem('该学生本日有尚未核实的提交结果。请先点击「核对提交结果」，不要重复提交。');return;
   }
   operationLock.current=true;
