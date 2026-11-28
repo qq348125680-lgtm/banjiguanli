@@ -24,7 +24,7 @@
 | `V7_STAGING_CADRE_EMAIL` / `V7_STAGING_CADRE_PASSWORD` | 测试班干部 |
 | `V7_STAGING_OUTSIDER_EMAIL` / `V7_STAGING_OUTSIDER_PASSWORD` | 无关测试账号 |
 
-5. 使用 GitHub Actions 手动触发 `V7 staging synthetic Auth and RLS acceptance (READ ONLY)` 工作流：`.github/workflows/staging-readonly-acceptance.yml`。**工作流不会自动对生产分支推送，也不会自动执行业务写入。**
+5. 验收运行入口：当前安全工作流仍只保存在 `test/v7-build-verification` 分支，GitHub 的 `workflow_dispatch` 按官方规则须在默认分支有同名工作流才能显示“Run workflow”按钮。为**不修改 main 分支**，此工作流同时支持仅对明确命名的 Git tag `v7-staging-check-*` 触发。配置上述 secrets 后，将该前缀的标签指向**已审核的 V7 测试分支提交**并推送即可启动一次验收（不要创建指向 main 的标签）：`git tag v7-staging-check-<日期或编号> <已审查的测试提交SHA>`，`git push origin v7-staging-check-<日期或编号>`。工作流仅对指定标签触发，不跟随普通分支推送运行。**任何形式都不会自动执行业务写入。**
 6. 验收只查询账号归属、授权班级、有限字段花名册、只读申请记录。跨班级、无授权、未登录调用 RPC 必须返回错误。任何一项失败都阻止标记验收通过。
 7. 只记录 GitHub Actions 运行链接、三种账号的测试结论和必要的脱敏汇总。验证过后及时停用测试账号、销毁不再使用的独立测试资源，防止产生持续费用。
 
