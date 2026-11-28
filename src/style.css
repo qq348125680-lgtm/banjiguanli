@@ -50,3 +50,31 @@
 .report-track{height:10px;border-radius:20px;overflow:hidden;background:#edf1f8}
 .report-fill{height:100%;background:#697cc3;border-radius:20px}
 @media(max-width:700px){.report-metrics{grid-template-columns:1fr;gap:9px}.report-metric{padding:13px}.report-metric strong{font-size:23px}.report-status{gap:8px}}
+
+/* Alpha40: privacy-conscious, read-only class activity; desktop layout retained. */
+.class-records .panel-head{margin-bottom:18px}
+.record-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:17px 0}
+.record-tabs button{min-height:42px;padding:9px 16px;background:#f6f8fc;color:#65738b;border:1px solid #e2e7f0;border-radius:11px;font-weight:600;font-size:13px}
+.record-tabs button.active{background:#edf0ff;border-color:#b8c4ed;color:#4359a6}
+.record-toolbar{display:flex;gap:12px;align-items:center;justify-content:flex-end;flex-wrap:wrap;margin:14px 0}
+.record-toolbar .muted{margin-right:auto}
+.record-toolbar label{display:flex;align-items:center;gap:8px;font-size:12px;color:#6b7894}
+.record-toolbar select{min-height:40px;padding:7px 10px}
+.record-refresh,.record-pagination button{min-height:44px;padding:9px 12px;background:#fff;border:1px solid #dfe5ee;border-radius:10px;color:#5165ac}
+.record-sensitive{background:#fff8ed;border:1px solid #fae5c7;color:#8b621f;padding:11px 13px;border-radius:10px}
+.record-list{display:grid;gap:10px}
+.record-item{border:1px solid #ebeff6;border-radius:12px;padding:14px 16px;min-width:0}
+.record-item-head{display:flex;gap:12px;justify-content:space-between;align-items:center}
+.record-item-head strong{font-size:14px;color:#364364}
+.record-item-head time{font-size:12px;color:#8290a6}
+.record-item p{margin:9px 0 0;font-size:13px;color:#66738b;overflow-wrap:anywhere;white-space:pre-wrap}
+.record-pagination{display:flex;justify-content:center;align-items:center;gap:16px;margin-top:18px;font-size:12px;color:#71809a}
+@media(max-width:700px){
+ .record-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+ .record-tabs button{padding:9px 4px;font-size:12px;min-height:44px}
+ .record-toolbar{justify-content:space-between;gap:9px}
+ .record-toolbar .muted{flex-basis:100%}
+ .record-item{padding:12px}
+ .record-item-head{align-items:flex-start;flex-direction:column;gap:3px}
+ .record-pagination{justify-content:space-between;gap:9px}
+}
