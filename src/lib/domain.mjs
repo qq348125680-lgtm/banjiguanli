@@ -1,5 +1,5 @@
 export const attendanceStatuses=Object.freeze(['出勤','迟到','缺勤','事假','病假']);
-export function displayError(error){if(!error)return '未知错误';const code=String(error.code||'');if(code==='42501'||code==='PGRST301')return '当前账号没有权限，请检查授权状态或重新登录';if(code==='23505')return '此记录已经处理，或当天存在冲突考勤，请刷新后核对';if(code==='23514')return '学生不属于当前班级或已归档';if(code==='PGRST202'||code==='42883')return '数据库尚未安装 V7 审核接口，请继续使用旧版';return typeof error.message==='string'?error.message:'操作未完成，请稍后重试';}
+export function displayError(error){if(!error)return '未知错误';const code=String(error.code||'');if(code==='42501'||code==='PGRST301')return '当前账号没有权限，请检查授权状态或重新登录';if(code==='23505')return '此记录已经处理，或当天存在冲突考勤，请刷新后核对';if(code==='23514')return '学生不属于当前班级或已归档';if(code==='V7_ALREADY_SUBMITTED')return '此学生本日已有您提交的考勤申请，请在我的提交记录中核对';if(code==='V7_PREFLIGHT_FAILED')return '提交前核对失败，尚未发起本次写入；请重新验证授权及网络后再操作';if(code==='PGRST202'||code==='42883')return '数据库尚未安装 V7 审核接口，请继续使用旧版';return typeof error.message==='string'?error.message:'操作未完成，请稍后重试';}
 export function sanitizeList(items){return (items||[]).map(s=>({id:String(s.student_id??s.id),student_no:String(s.student_no??''),name:String(s.student_name??s.name??'')}));}
 export function statusTone(status){if(status==='已通过')return 'good';if(status==='已驳回')return 'bad';return 'pending';}
 export function dateToday(){const now=new Date();const y=now.getFullYear();const m=String(now.getMonth()+1).padStart(2,'0');const d=String(now.getDate()).padStart(2,'0');return `${y}-${m}-${d}`;}
@@ -26,7 +26,7 @@ export function canReviewSubmission(items,id,action){
  */
 export function uncertainWriteOutcome(error){
  const code=String(error?.code??'');
- if(['42501','23505','23514','23503','23502','22023','PGRST202','42883'].includes(code))return false;
+ if(['42501','23505','23514','23503','23502','22023','PGRST202','42883','V7_ALREADY_SUBMITTED','V7_PREFLIGHT_FAILED'].includes(code))return false;
  if(!code&&typeof error?.message==='string'&&/学生已不在授权班级|日期不合法|状态不合法|说明不能超过|仅开放考勤提交|UUID/i.test(error.message))return false;
  return true;
 }
