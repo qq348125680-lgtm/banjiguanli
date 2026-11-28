@@ -71,7 +71,7 @@ Alpha 47 将隔离迁移的 `v7_pending_student_day_unique` 索引限定为**同
 1. 只在独立 Supabase 测试项目验证实际老师与班干部两种账号；先验证 RLS，再开放浏览器数据连接。
 2. 现有生产数据库没有 `v7_cadre_roster` 与 `v7_review_attendance` 两个关键函数。班干部花名册读取与考勤事务目前不能按 V7 的预期闭环。
 3. Supabase 安全顾问此前报告多个可执行 SECURITY DEFINER 函数警告。逐项审核，不能直接全量撤销权限干扰正式系统。
-4. `VITE_ENABLE_WORKFLOW_WRITES=false` 保持关闭。未经验收，禁止发布任何真实写入/审批功能。
+4. `VITE_ENABLE_WORKFLOW_WRITES=false` 与 `VITE_V7_WRITE_GATE_ACKNOWLEDGED=false` 均保持关闭。双开关只是防误构建措施，不是权限校验；未经验收禁止发布任何真实写入/审批功能。
 5. 跨账号、跨班级、停用/撤销授权、网络异常、切后台恢复、手机触控和电脑桌面均须测试，保留原系统回退方案。
 
 ## 本地编译（仅开发人员）
@@ -95,3 +95,10 @@ npm run dev
 - 核对考勤仅在查到当前账号、学生和日期的**待审核或已通过考勤**时视为有正向证据；仅查到历史已驳回申请、未知状态或空结果时继续锁定，绝不自动补发第二次写入。
 - 新增 `tests/write-intent-guard.test.mjs` 测试提前持久化、拒绝覆盖、存储不可用时拒绝写入、范围隔离与历史驳回判断。现有 CI 继续执行 Node 单测与 TypeScript/Vite 构建。
 - 标签页会话存储不是跨浏览器、跨设备或多标签页的事务锁；最终并发安全仍以数据库约束、RLS 与服务端事务为准。本轮未在真实 Supabase 项目进行两账号验收。
+
+## Alpha 47 生产只读审计与防误发布
+
+- 2026-11-28 已从当前 Supabase 生产项目**只读取元数据**：V7 花名册 RPC、审核 RPC 及并发防重索引均未安装；当前没有 Supabase 隔离分支。
+- 安全顾问提示 19 项匿名角色与 33 项已登录角色可调用 SECURITY DEFINER 函数的 **WARN**，尚不能据此认定已被利用，也不可直接批量撤销旧版权限。
+- V7 写入必须同时存在合法浏览器发布配置、`VITE_ENABLE_WORKFLOW_WRITES=true` 和 `VITE_V7_WRITE_GATE_ACKNOWLEDGED=true` 才会在前端被展示为可写。**它们都不是服务器授权证明**，仍需 RLS、原子事务与双账号验收。
+- 参见 [生产环境只读核对及上线门槛](V7_ALPHA47_LIVE_READONLY_AUDIT_2026-11-28.md)。
