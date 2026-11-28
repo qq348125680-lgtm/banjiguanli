@@ -7,7 +7,7 @@ const pages=readFileSync(new URL('../.github/workflows/pages-safe-preview.yml',i
 const client=readFileSync(new URL('../src/lib/client.ts',import.meta.url),'utf8');
 
 test('Alpha38 public technical preview is clearly labelled as no-database and non-operational',()=>{
- assert.match(app,/Alpha 44 · 安全技术预览/);
+ assert.match(app,/Alpha 45 · 安全技术预览/);
  assert.match(app,/import\.meta\.env\.PROD\?/);
  assert.match(app,/暂不能登录、读取学生信息或登记考勤/);
  assert.match(app,/正式业务请继续使用原有系统/);
