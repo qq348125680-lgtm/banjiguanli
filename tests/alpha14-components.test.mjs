@@ -29,8 +29,12 @@ test('entry inputs are held during mutation and persist only on successful submi
  assert.match(entry,/disabled=\{p\.busy\|\|p\.loading\}/);
  assert.match(entry,/!p\.completed\.includes\(p\.selected\)/);
  assert.match(app,/await withUncertainWriteDeadline\(\(\)=>bridges\.writer\.submit/);
- assert.match(app,/if\(scopeRef\.current===operationScope\)\{\s*clearPendingMarker\(browserSessionStorage\(\),'submit'/);
- assert.match(app,/setUncertainSubmit\(null\);setNote\(''\)/);
+ // A write-ahead recovery marker is persisted before network work, then
+ // cleared only when the response is definitive, even after navigating away.
+ assert.match(app,/beginWriteIntent\(browserSessionStorage\(\),'submit',intentScope,submittedStudent\)/);
+ assert.match(app,/await withUncertainWriteDeadline\(\(\)=>bridges\.writer\.submit/);
+ assert.match(app,/finishKnownWrite\(browserSessionStorage\(\),'submit',intentScope,submittedStudent\)/);
+ assert.match(app,/setUncertainSubmit\(null\);setNote\(''\);setAttendance\('出勤'\)/);
  assert.match(entry,/p\.uncertainStudentId!==p\.selected/);
 });
 test('review is restricted to actionable records and requires a note for rejection',()=>{
