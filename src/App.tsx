@@ -24,7 +24,8 @@ import {invalidateSelectedClass} from './lib/authorization-race.mjs';
 import {decideReadFailure} from './lib/read-failure-policy.mjs';
 import {withReadDeadline} from './lib/read-deadline.mjs';
 import {withUncertainWriteDeadline} from './lib/write-deadline.mjs';
-import {browserSessionStorage,loadPendingMarker,savePendingMarker,clearPendingMarker} from './lib/pending-write-marker.mjs';
+import {browserSessionStorage,loadPendingMarker,clearPendingMarker} from './lib/pending-write-marker.mjs';
+import {beginWriteIntent,finishKnownWrite,hasConfirmedAttendance} from './lib/write-intent-guard.mjs';
 
 type View='dashboard'|'students'|'entry'|'review'|'records'|'reports'|'archive';
 const nav:[View,string,typeof LayoutDashboard][]=[['dashboard','工作台',LayoutDashboard],['students','学生中心',Users],['entry','班级事务',ClipboardList],['review','审核中心',ClipboardCheck],['records','班务记录',BookOpen],['reports','数据分析',ShieldCheck],['archive','工作档案',Archive]];
@@ -243,15 +244,21 @@ export default function App(){
  async function submit(){
   if(!bridges||!canSubmit||!canSubmitToRoster({roster,studentId:selected,classId,owned})||!isValidDate(day)||submittedSession.includes(selected)||operationLock.current)return;
   if(uncertainSubmit&&uncertainSubmit.accountId===user?.id&&uncertainSubmit.classId===classId&&uncertainSubmit.day===day){
-   setProblem('该学生本日有尚未核实的提交结果。请先点击「核对提交结果」，不要重复提交。');return;
+   setProblem('本班本日尚有未核实的考勤提交；请先点击「核对提交结果」，避免覆盖未确认记录。');return;
+  }
+  const operationScope=scopeRef.current, submittedStudent=selected, submittedDay=day, submittedClass=classId, submittedAccount=user!.id;
+  const intentScope={accountId:submittedAccount,classId:submittedClass,day:submittedDay};
+  const intent=beginWriteIntent(browserSessionStorage(),'submit',intentScope,submittedStudent);
+  if(!intent.ok){
+   setProblem(intent.reason==='storage'?'当前浏览器不能安全保存未确认操作标记，已阻止本次提交；请检查隐私模式或浏览器存储设置。':'本班本日还有尚未确认的提交，请先核对服务器结果。');
+   return;
   }
   operationLock.current=true;
-  const operationScope=scopeRef.current, submittedStudent=selected, submittedDay=day, submittedClass=classId, submittedAccount=user!.id;
   setBusyId('submit');setProblem('');setFeedback('');
   try{
    await withUncertainWriteDeadline(()=>bridges.writer.submit({classId:submittedClass,studentId:submittedStudent,entryType:'考勤',date:submittedDay,status:attendance,note}));
+   finishKnownWrite(browserSessionStorage(),'submit',intentScope,submittedStudent);
    if(scopeRef.current===operationScope){
-    clearPendingMarker(browserSessionStorage(),'submit',{accountId:submittedAccount,classId:submittedClass,day:submittedDay});
     setUncertainSubmit(null);setNote('');setPage(1);
     setSubmittedSession(prev=>markSubmissionConfirmed(prev,submittedStudent));
     setSelected(nextOutstanding(roster,[...submittedSession,submittedStudent],submittedStudent));
@@ -259,9 +266,10 @@ export default function App(){
     if(scopeRef.current===operationScope)setFeedback('申请已提交待审核，尚未计入正式考勤。');
    }
   }catch(e){
+   const unknown=uncertainWriteOutcome(e);
+   if(!unknown)finishKnownWrite(browserSessionStorage(),'submit',intentScope,submittedStudent);
    if(scopeRef.current===operationScope){
-    if(uncertainWriteOutcome(e)){
-     savePendingMarker(browserSessionStorage(),'submit',{accountId:submittedAccount,classId:submittedClass,day:submittedDay},submittedStudent);
+    if(unknown){
      setUncertainSubmit({accountId:submittedAccount,classId:submittedClass,day:submittedDay,studentId:submittedStudent});
      setProblem('提交结果暂时无法确认：服务器可能已保存申请。已暂停本班本日后续考勤提交，请先核对「我的提交记录」。');
     }else setProblem(displayError(e));
@@ -276,13 +284,13 @@ export default function App(){
   try{
    const records=await withReadDeadline(()=>bridges.writer.verifySubmission({classId:pending.classId,studentId:pending.studentId,date:pending.day}));
    if(scopeRef.current!==`${pending.accountId}:${pending.classId}:${pending.day}`)return;
-   if(records.length){
+   if(hasConfirmedAttendance(records)){
     setSubmittedSession(prev=>markSubmissionConfirmed(prev,pending.studentId));
     clearPendingMarker(browserSessionStorage(),'submit',{accountId:pending.accountId,classId:pending.classId,day:pending.day});
     setUncertainSubmit(null);
     setFeedback('已在服务器查询到该学生本日的考勤申请；请到「我的提交记录」核对状态，不要再次提交。');
     await loadData();
-   }else setProblem('未查到可见申请，但仍无法证明之前的写入未发生。为避免重复，当前页面继续锁定本次提交，请从旧版核实后再操作。');
+   }else setProblem(records.length?'仅查到历史驳回或状态无法确认的考勤申请，不能证明本次提交已完成；继续锁定，请在旧版核实。':'未查到可见申请，但仍无法证明之前的写入未发生。为避免重复，当前页面继续锁定本次提交，请从旧版核实后再操作。');
   }catch(e){
    if(scopeRef.current===`${pending.accountId}:${pending.classId}:${pending.day}`)
     setProblem('核对失败，继续禁止重复提交。请检查网络或使用旧版核实：'+displayError(e));
@@ -291,22 +299,29 @@ export default function App(){
  async function review(id:string,action:'approve'|'reject'){
   if(!bridges||!canWrite||!owned||!canReviewSubmission(items,id,action)||operationLock.current)return;
   if(uncertainReview&&uncertainReview.accountId===user?.id&&uncertainReview.classId===classId){
-   setProblem('该申请有尚未确认的审核结果，请先核对服务器状态，避免重复审核。');return;
+   setProblem('本班尚有未确认的审核结果，请先核对服务器状态，避免覆盖未确认记录。');return;
+  }
+  const account=user!.id, submittedClass=classId,operationScope=scopeRef.current;
+  const intentScope={accountId:account,classId:submittedClass};
+  const intent=beginWriteIntent(browserSessionStorage(),'review',intentScope,id);
+  if(!intent.ok){
+   setProblem(intent.reason==='storage'?'当前浏览器不能安全保存未确认审核标记，已阻止本次审核；请检查浏览器存储设置。':'本班有上一笔审核结果尚未确认，请先核对服务器状态。');
+   return;
   }
   operationLock.current=true;
-  const account=user!.id, submittedClass=classId,operationScope=scopeRef.current;
   setBusyId(id);setProblem('');setFeedback('');
   try{
    await withUncertainWriteDeadline(()=>bridges.writer.review(id,action,reviewNotes[id]??''));
+   finishKnownWrite(browserSessionStorage(),'review',intentScope,id);
    if(scopeRef.current===operationScope){
-    clearPendingMarker(browserSessionStorage(),'review',{accountId:account,classId:submittedClass});
     setUncertainReview(null);await loadData();
     if(scopeRef.current===operationScope)setFeedback(action==='approve'?'审核已通过，服务端事务已返回结果。':'已驳回，并保留审核原因。');
    }
   }catch(e){
+   const unknown=uncertainWriteOutcome(e);
+   if(!unknown)finishKnownWrite(browserSessionStorage(),'review',intentScope,id);
    if(scopeRef.current===operationScope){
-    if(uncertainWriteOutcome(e)){
-     savePendingMarker(browserSessionStorage(),'review',{accountId:account,classId:submittedClass},id);
+    if(unknown){
      setUncertainReview({accountId:account,classId:submittedClass,id});
      setProblem('审核结果未知：可能已经完成数据库事务。已暂停本班后续审核，请先核对服务器状态。');
     }else setProblem(displayError(e));
