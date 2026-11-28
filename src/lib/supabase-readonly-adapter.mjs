@@ -162,6 +162,7 @@ export function createReadOnlyBridge(client){
   '违纪':{table:'incidents',fields:'id,happened_on,category,description,points,created_at',order:'happened_on'},
   '积分':{table:'point_events',fields:'id,happened_on,rule_code,detail,status,created_at',order:'happened_on'},
   '值日':{table:'duty_assignments',fields:'id,student_id,class_id',order:'id'},
+  '家校沟通':{table:'family_contacts',fields:'id,contacted_on,method,created_at',order:'contacted_on'},
  });
  /** Exact-count server pagination: 5/10/20 rows, scoped to owned class and student. */
  async function dossierPageForOwner(classId,studentId,section,{page=1,pageSize=5}={}){
