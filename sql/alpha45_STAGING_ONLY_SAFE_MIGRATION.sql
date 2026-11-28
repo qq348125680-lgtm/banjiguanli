@@ -5,6 +5,13 @@
 -- This script deliberately leaves the existing cadre INSERT policy in place.
 begin;
 
+-- Prevent two unresolved submissions for the same student/date/type even if
+-- browser tabs race. If legacy pending duplicates exist, this statement will
+-- FAIL and roll back this entire migration (never silently delete old rows).
+create unique index if not exists v7_pending_student_day_unique
+on public.cadre_submissions(class_id,student_id,entry_type,occurred_on)
+where status='待审核';
+
 -- A private trigger guarantees student/class consistency at the database level.
 -- A restrictive INSERT policy alone is NOT sufficient in this current schema:
 -- delegates lack direct SELECT access to students, so nested RLS can reject valid inserts.
