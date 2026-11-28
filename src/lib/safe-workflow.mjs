@@ -12,8 +12,17 @@ export function createSafeWorkflow(client) {
     if(typeof note!=='string'||note.length>500)throw Error('说明不能超过500字');
     // Recheck live class membership before every submission, not just a stale UI roster.
     // The database trigger in the STAGING-only migration enforces this independently.
-    const currentRoster=await roster(classId);
+    let currentRoster;
+    try{currentRoster=await roster(classId)}
+    catch(e){throw Object.assign(Error('提交前班级授权核对失败，尚未发起考勤写入；请检查网络后重新验证'),{code:'V7_PREFLIGHT_FAILED',cause:e})}
     if(!Array.isArray(currentRoster)||!currentRoster.some(s=>s.student_id===studentId))throw Error('当前学生已不在授权班级花名册中，请重新验证权限');
+    // Persistent server history, not just this React tab's in-memory markers:
+    // prevents accidental re-submit after page refresh / browser re-open.
+    // Only the staging-only partial unique index handles two simultaneous tabs.
+    let existing;
+    try{existing=await verifySubmission({classId,studentId,date})}
+    catch(e){throw Object.assign(Error('提交前已有申请核对失败，尚未发起写入；请先核对我的提交记录'),{code:'V7_PREFLIGHT_FAILED',cause:e})}
+    if(existing.length)throw Object.assign(Error('该学生本日已有本人提交的考勤申请，请到我的提交记录核对，不能重复提交'),{code:'V7_ALREADY_SUBMITTED'});
     const {data,error}=await client.from('cadre_submissions').insert({
       class_id:classId,student_id:studentId,submitted_by:u.id,entry_type:'考勤',occurred_on:date,
       details:{status,note},status:'待审核'
