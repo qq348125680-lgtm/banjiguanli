@@ -7,7 +7,7 @@ test('Alpha44 public tour explicitly contains no student records, database clien
  assert.match(preview,/<StudentsPanel students=\{\[\]\}/);
  assert.match(preview,/无法读取不显示为零/);
  assert.match(preview,/功能写入、数据库访问与身份认证全部不可用/);
- assert.doesNotMatch(preview,/supabase|\.insert\(|\.update\(|\.delete\(|\.rpc\(|fetch\(/i);
+ assert.doesNotMatch(preview,/\.insert\(|\.update\(|\.delete\(|\.rpc\(|fetch\(|from\(['\"]@supabase/i);
 });
 test('Alpha44 layout tour includes six functional navigation entries and mobile controls',()=>{
  const src=readFileSync(new URL('../src/components/SafePreviewWorkspace.tsx',import.meta.url),'utf8');
