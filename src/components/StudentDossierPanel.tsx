@@ -33,13 +33,13 @@ function DossierSection({name,studentId,fetchPage,onCount}:{name:SectionName;stu
    <span>{page} / {pages??'?'}</span><button type="button" disabled={loading||Boolean(error)||!result||Boolean(pages&&page>=pages)||(!pages&&result.items.length<pageSize)} onClick={()=>setPage(p=>p+1)}>下一页</button></div>
  </article>;
 }
-export function StudentDossierPanel({student,fetchPage,onClose,onOpenCases}:{student?:StudentItem;fetchPage:FetchPage;onClose:()=>void;onOpenCases?:(studentId:string)=>void}){
+export function StudentDossierPanel({student,fetchPage,onClose,onOpenCases,onOpenGuardians}:{student?:StudentItem;fetchPage:FetchPage;onClose:()=>void;onOpenCases?:(studentId:string)=>void;onOpenGuardians?:(studentId:string)=>void}){
  const [counts,setCounts]=useState<Record<string,number|null>>({});
  useEffect(()=>{setCounts({})},[student?.id]);
  const captureCount=useCallback((kind:SectionName,count:number|null)=>setCounts(previous=>previous[kind]===count?previous:{...previous,[kind]:count}),[]);
  const complete=SECTIONS.every(kind=>typeof counts[kind]==='number');
  const total=complete?SECTIONS.reduce((sum,kind)=>sum+(counts[kind]??0),0):null;
- return <section className="panel dossier-panel" aria-label="学生业务档案"><div className="panel-head"><div><h2>业务档案 · {student?.name??'学生'}</h2><p>班主任授权只读：考勤、请假、违纪、积分、值日及家校沟通，分类独立分页。</p></div><div className="dossier-extra-actions">{student&&onOpenCases&&<Button secondary onClick={()=>onOpenCases(student.id)}>查看事件工单</Button>}<Button secondary onClick={onClose}>关闭档案</Button></div></div>
+ return <section className="panel dossier-panel" aria-label="学生业务档案"><div className="panel-head"><div><h2>业务档案 · {student?.name??'学生'}</h2><p>班主任授权只读：考勤、请假、违纪、积分、值日及家校沟通，分类独立分页。</p></div><div className="dossier-extra-actions">{student&&onOpenCases&&<Button secondary onClick={()=>onOpenCases(student.id)}>查看事件工单</Button>}{student&&onOpenGuardians&&<Button secondary onClick={()=>onOpenGuardians(student.id)}>家庭联系人关系</Button>}<Button secondary onClick={onClose}>关闭档案</Button></div></div>
   {student&&<div className="dossier-growth-summary"><strong>{total===null?'—':total}</strong><div><b>六类历史业务记录</b><small>{total===null?'正在核对各类别数量，或存在尚未读取成功的类别':'数量为各类别精确计数之和；事件工单需单独查看，不重复计入'}</small></div></div>}
   {student&&<div className="dossier-grid">{SECTIONS.map(name=><DossierSection key={`${student.id}:${name}`} name={name} studentId={student.id} fetchPage={fetchPage} onCount={captureCount}/>)}</div>}
  </section>;
