@@ -2,16 +2,17 @@ import type {Submission} from '../lib/bridge';
 import {canReviewSubmission} from '../lib/domain.mjs';
 import {Badge,Button} from './Common';
 import {reviewPageDigest} from '../lib/review-page-digest.mjs';
-export type ReviewPanelProps={owned:boolean;items:Submission[];names:Map<string,string>;total:number|null;page:number;pageSize:number;filter:string;loading:boolean;busy:boolean;canWrite:boolean;notes:Record<string,string>;setNotes:(fn:(v:Record<string,string>)=>Record<string,string>)=>void;setFilter:(s:string)=>void;setPage:(fn:(v:number)=>number)=>void;setPageSize:(n:number)=>void;review:(id:string,action:'approve'|'reject')=>void};
+export type ReviewPanelProps={owned:boolean;items:Submission[];names:Map<string,string>;total:number|null;page:number;pageSize:number;filter:string;loading:boolean;busy:boolean;cadreDirectory:{uid:string;name:string|null;duty:string;enabled:boolean}[];canWrite:boolean;notes:Record<string,string>;setNotes:(fn:(v:Record<string,string>)=>Record<string,string>)=>void;setFilter:(s:string)=>void;setPage:(fn:(v:number)=>number)=>void;setPageSize:(n:number)=>void;review:(id:string,action:'approve'|'reject')=>void};
 export function ReviewPanel(p:ReviewPanelProps){
  const pages=p.total===null?null:Math.max(1,Math.ceil(p.total/p.pageSize));
  const reviewSummary=reviewPageDigest(p.items);
  const hints=new Map(reviewSummary.pending.map(item=>[item.id,item]));
+ const actorNames=new Map(p.cadreDirectory.map(d=>[d.uid,d]));
  return <section className="panel"><div className="panel-head"><div><h2>{p.owned?'班主任审核中心':'我的提交记录'}</h2><p>真实记录按身份和班级权限读取；审批前服务端必须再次验证状态。</p></div><span className="count">{p.total===null?'数量未知':`${p.total} 条`}</span></div>
  {p.owned&&<div className="review-digest" role="status"><strong>当前页审核提醒</strong><div><span>本页待审核 <b>{reviewSummary.counts.pending}</b></span><span>本页已通过 <b>{reviewSummary.counts.approved}</b></span><span>本页已驳回 <b>{reviewSummary.counts.rejected}</b></span></div><small>仅统计本次加载的 {reviewSummary.counts.total} 条记录，不能作为全班审核总数；页面刷新后重新计算。</small></div>}
  {p.owned&&reviewSummary.submitters.length>0&&<details className="review-cadre-summary"><summary>按提交账号核对本页班干部工作（{reviewSummary.submitters.length} 个账号）</summary>
   <p className="muted">只按审核记录中的真实提交 UID 分组，不推测操作人姓名；此表仅覆盖当前页，并非全部班干部完成量。</p>
-  <div className="review-cadre-list">{reviewSummary.submitters.map(s=><div key={s.actorId} className="review-cadre-row"><code title={s.actorId}>{s.actorId==='操作人未知'?'操作人未知':s.actorId}</code><span>本页 {s.visible} 条</span><span>待审 {s.pending}</span><span>已通过 {s.approved}</span></div>)}</div></details>}
+  <div className="review-cadre-list">{reviewSummary.submitters.map(s=><div key={s.actorId} className="review-cadre-row"><div className="review-cadre-actor">{actorNames.get(s.actorId)?.name?<strong>{actorNames.get(s.actorId)?.name} · {actorNames.get(s.actorId)?.duty}{actorNames.get(s.actorId)?.enabled?'':'（已停用）'}</strong>:<strong>操作人未关联学生姓名</strong>}<code title={s.actorId}>{s.actorId}</code></div><span>本页 {s.visible} 条</span><span>待审 {s.pending}</span><span>已通过 {s.approved}</span></div>)}</div></details>}
  <div className="filters">{p.owned&&<label>状态<select value={p.filter} onChange={e=>{p.setFilter(e.target.value);p.setPage(()=>1)}}>{['全部','待审核','已通过','已驳回'].map(v=><option key={v}>{v}</option>)}</select></label>}
  <label>每页<select value={p.pageSize} onChange={e=>{p.setPageSize(Number(e.target.value));p.setPage(()=>1)}}>{[5,10,20].map(v=><option key={v}>{v}</option>)}</select></label></div>
  <div className="item-list">{p.items.map(i=><article className="item" key={i.id}><div className="item-top"><div><strong>{p.names.get(i.student_id)??'学生（未找到或无权查看）'}</strong><span className="muted"> · {i.entry_type} · {i.occurred_on}</span></div><Badge status={i.status}/></div>
