@@ -87,7 +87,7 @@ commit;
 begin;
 set local role authenticated;
 set local request.jwt.claim.sub='66666666-6666-4666-8666-666666666666';
-do $
+do $$
 declare n int;
 begin
  select count(*) into n from public.v7_cadre_roster('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
@@ -101,14 +101,14 @@ begin
   raise exception 'different cadre submitted duplicate pending attendance';
  exception when unique_violation then null;
  end;
-end$;
+end$$;
 commit;
 
 -- Disabled user cannot read roster OR INSERT a request even with known UUIDs.
 begin;
 set local role authenticated;
 set local request.jwt.claim.sub='44444444-4444-4444-8444-444444444444';
-do $
+do $$
 begin
  begin
   perform * from public.v7_cadre_roster('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
@@ -124,20 +124,20 @@ begin
   raise exception 'disabled delegate should not insert pending application';
  exception when insufficient_privilege then null;
  end;
-end$;
+end$$;
 commit;
 
 -- A completely anonymous client has no EXECUTE grant on privileged roster RPC.
 begin;
 set local role anon;
-do $
+do $$
 begin
  begin
   perform * from public.v7_cadre_roster('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
   raise exception 'anonymous user accessed privileged roster';
  exception when insufficient_privilege then null;
  end;
-end$;
+end$$;
 commit;
 
 -- Unrelated owner B cannot approve any A application.
