@@ -10,11 +10,11 @@ type Api={
  list:(classId:string,params:{page:number;pageSize:number;status:string;studentId?:string;caseId?:string})=>Promise<{items:CaseRow[];count:number|null}>;
  history:(classId:string,caseId:string)=>Promise<CaseHistory[]>;
  assignees:(classId:string)=>Promise<Candidate[]>;
- create:(params:{classId:string;studentId:string;kind:string;title:string;description:string;requestKey:string})=>Promise<string>;
+ create:(params:{classId:string;studentId:string;kind:string;title:string;description:string;requestKey:string;sourceRecordId?:string})=>Promise<string>;
  findByRequestKey:(classId:string,requestKey:string)=>Promise<CaseRow|null>;
  transition:(id:string,action:string,assignee:string|null,note:string)=>Promise<{id:string;status:string}>;
 };
-type Props={api:Api;classId:string;userId:string;owned:boolean;canWrite:boolean;students:StudentItem[];onStudent:(id:string)=>void;initialDraft?:{studentId:string;kind:string;title:string}|null;initialStudentId?:string;initialCaseId?:string};
+type Props={api:Api;classId:string;userId:string;owned:boolean;canWrite:boolean;students:StudentItem[];onStudent:(id:string)=>void;initialDraft?:{studentId:string;kind:string;title:string;sourceRecordId?:string}|null;initialStudentId?:string;initialCaseId?:string};
 const newKey=()=>crypto.randomUUID();
 export function EventCaseBoard({api,classId,userId,owned,canWrite,students,onStudent,initialDraft,initialStudentId='',initialCaseId=''}:Props){
  const [cases,setCases]=useState<CaseRow[]>([]),[count,setCount]=useState<number|null>(null);
@@ -22,6 +22,7 @@ export function EventCaseBoard({api,classId,userId,owned,canWrite,students,onStu
  const [studentScope,setStudentScope]=useState(initialStudentId),[caseScope,setCaseScope]=useState(initialCaseId);
  const [loading,setLoading]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const [studentId,setStudentId]=useState(initialDraft?.studentId??''),[kind,setKind]=useState(initialDraft&&CASE_KINDS.includes(initialDraft.kind)?initialDraft.kind:'考勤'),[title,setTitle]=useState(initialDraft?.title??''),[description,setDescription]=useState('');
+ const [sourceRecordId,setSourceRecordId]=useState(initialDraft?.sourceRecordId??'');
  const [requestKey,setRequestKey]=useState(newKey),[uncertain,setUncertain]=useState(false);
  const [candidates,setCandidates]=useState<Candidate[]>([]),[candidateError,setCandidateError]=useState('');
  const [targetById,setTargetById]=useState<Record<string,string>>({}),[notes,setNotes]=useState<Record<string,string>>({}),[transferNotes,setTransferNotes]=useState<Record<string,string>>({});
@@ -52,12 +53,12 @@ export function EventCaseBoard({api,classId,userId,owned,canWrite,students,onStu
    .catch(()=>{if(active)setCandidateError('负责人名单读取失败，暂时不能指派。')});
   return ()=>{active=false};
  },[api,classId,owned,revision]);
- const resetDraft=()=>{setStudentId('');setTitle('');setDescription('');setKind('考勤');setUncertain(false);setRequestKey(newKey())};
+ const resetDraft=()=>{setStudentId('');setTitle('');setDescription('');setKind('考勤');setSourceRecordId('');setUncertain(false);setRequestKey(newKey())};
  const create=async()=>{
   if(actionLock.current||!canWrite||!studentId||title.trim().length<2||title.trim().length>80||description.length>1000)return;
   actionLock.current=true;setBusyId('create');setError('');setNotice('');
   try{
-   const id=await api.create({classId,studentId,kind,title,description,requestKey});
+   const id=await api.create({classId,studentId,kind,title,description,requestKey,sourceRecordId});
    resetDraft();setNotice('工单已创建并保存，编号 '+id.slice(0,8)+'…，可以继续指派负责人。');
    setPage(1);setFilter('全部');setRevision(x=>x+1);
   }catch(e){
@@ -106,11 +107,12 @@ export function EventCaseBoard({api,classId,userId,owned,canWrite,students,onStu
   {(studentScope||caseScope)&&<div className="event-linked-scope"><span>{caseScope?'当前定位一个指定事件工单':'学生事件工单档案 · '+(names.get(studentScope)??'授权学生')}</span><button type="button" className="record-refresh" onClick={()=>{setStudentScope('');setCaseScope('');setPage(1);setFilter('全部')}}>查看全部工单</button></div>}
   {canWrite&&<form className="case-create" onSubmit={e=>{e.preventDefault();void create()}}>
    <strong>新建班级事件</strong>
+   {sourceRecordId&&<div className="case-linked-source"><span><b>已选择原始{kind}记录</b> · 编号 {sourceRecordId.slice(0,8)}…，保存后将由数据库核对所属学生并防重复关联。</span><button className="record-refresh" type="button" disabled={Boolean(busyId)||uncertain} onClick={()=>{setSourceRecordId('');setRequestKey(newKey())}}>取消来源关联</button></div>}
    <div className="case-form-grid">
-    <label>关联学生<select required disabled={Boolean(busyId)||uncertain} value={studentId} onChange={e=>setStudentId(e.target.value)}>
+    <label>关联学生<select required disabled={Boolean(busyId)||uncertain||Boolean(sourceRecordId)} value={studentId} onChange={e=>setStudentId(e.target.value)}>
       <option value="">选择在读学生</option>{students.map(s=><option value={s.id} key={s.id}>{s.student_no} · {s.name}</option>)}
      </select></label>
-    <label>事件类别<select disabled={Boolean(busyId)||uncertain} value={kind} onChange={e=>setKind(e.target.value)}>{CASE_KINDS.map(k=><option key={k}>{k}</option>)}</select></label>
+    <label>事件类别<select disabled={Boolean(busyId)||uncertain||Boolean(sourceRecordId)} value={kind} onChange={e=>setKind(e.target.value)}>{CASE_KINDS.map(k=><option key={k}>{k}</option>)}</select></label>
     <label className="case-form-wide">事件标题<input required minLength={2} maxLength={80} disabled={Boolean(busyId)||uncertain} value={title} onChange={e=>setTitle(e.target.value)} placeholder="例如：课堂纪律需要跟进"/></label>
     <label className="case-form-wide">情况说明<textarea maxLength={1000} rows={2} disabled={Boolean(busyId)||uncertain} value={description} onChange={e=>setDescription(e.target.value)} placeholder="客观描述事实，暂不填写无关的家庭敏感信息"/></label>
    </div>
