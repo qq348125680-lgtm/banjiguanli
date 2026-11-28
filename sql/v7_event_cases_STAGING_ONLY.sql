@@ -27,9 +27,11 @@ create table public.v7_event_case_history(
  case_id uuid not null references public.v7_event_cases(id) on delete restrict,
  class_id uuid not null references public.classes(id),
  actor_id uuid not null,
- action text not null check(action in ('创建','指派','反馈','结案','退回')),
+ action text not null check(action in ('创建','指派','转派','反馈','结案','退回')),
  from_status text,
  to_status text not null,
+ previous_assignee uuid,
+ next_assignee uuid,
  note text not null default '' check(char_length(note)<=1000),
  created_at timestamptz not null default now()
 );
@@ -114,7 +116,12 @@ begin
    and not exists(select 1 from public.class_delegates d
     where d.class_id=v_case.class_id and d.user_id=p_assignee and d.enabled=true) then
    raise exception '负责人不属于当前授权班级' using errcode='23514';end if;
-  v_next:='处理中';v_name:='指派';
+  if v_case.assigned_to=p_assignee then
+   raise exception '负责人未变化，请选择其他人员' using errcode='23514';end if;
+  if v_case.assigned_to is not null and nullif(btrim(coalesce(p_note,'')),'') is null then
+   raise exception '转派工单必须填写原因' using errcode='23514';end if;
+  v_next:='处理中';
+  v_name:=case when v_case.assigned_to is null then '指派' else '转派' end;
   update public.v7_event_cases set assigned_to=p_assignee,status=v_next,updated_at=now(),closed_at=null where id=p_case_id;
  elsif p_action='reply' then
   if v_case.status<>'处理中' or v_case.assigned_to<>v_actor
@@ -135,8 +142,11 @@ begin
   v_name:='退回';
   update public.v7_event_cases set status=v_next,closed_at=null,updated_at=now() where id=p_case_id;
  end if;
- insert into public.v7_event_case_history(case_id,class_id,actor_id,action,from_status,to_status,note)
- values(p_case_id,v_case.class_id,v_actor,v_name,v_case.status,v_next,btrim(coalesce(p_note,'')));
+ insert into public.v7_event_case_history(
+  case_id,class_id,actor_id,action,from_status,to_status,previous_assignee,next_assignee,note)
+ values(p_case_id,v_case.class_id,v_actor,v_name,v_case.status,v_next,
+  v_case.assigned_to,case when p_action='assign' then p_assignee else v_case.assigned_to end,
+  btrim(coalesce(p_note,'')));
  return jsonb_build_object('id',p_case_id,'status',v_next,'action',v_name);
 end;
 $fn$;
