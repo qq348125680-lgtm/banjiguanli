@@ -7,7 +7,7 @@ select
  exists(
   select 1 from pg_constraint c where c.conrelid='public.attendance'::regclass
     and c.contype='u' and
-      pg_get_constraintdef(c.oid) ~* 'UNIQUE \\(student_id, on_date\\)'
+      position('UNIQUE (student_id, on_date)' in pg_get_constraintdef(c.oid)) > 0
  ) as pass
 union all
 select 'attendance_rls_enabled',coalesce((select relrowsecurity from pg_class where oid='public.attendance'::regclass),false)
