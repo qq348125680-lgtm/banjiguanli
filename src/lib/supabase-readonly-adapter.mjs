@@ -1,4 +1,4 @@
-import {validateRecordPage} from './class-records.mjs';
+import {validateRecordPage,validateRecordDates} from './class-records.mjs';
 /** V7 Alpha8 safe read-only bridge. Never calls insert/update/delete/upsert/rpc. */
 export const MAPPING=Object.freeze({
   submissions:'cadre_submissions',students:'students',classes:'classes',delegates:'class_delegates',
@@ -41,17 +41,21 @@ export function createReadOnlyBridge(client){
  }
 
  /** Return only the owner-authorized active class's paged business records; no writes. */
- async function classRecordsForOwner(classId,kind,{page=1,pageSize=10}={}){
+ async function classRecordsForOwner(classId,kind,{page=1,pageSize=10,studentId='',startOn='',endOn=''}={}){
   assertUuid(classId);
   const def=validateRecordPage(kind,page,pageSize);
+  validateRecordDates(startOn,endOn);
   await verifyOwner(classId);
   const members=await studentsForOwner(classId);
   // Bound class membership locally and by server RLS; never query unrelated students.
   if(members.length>500)throw Error('班级学生数量超出当前安全查询上限，请使用旧版系统');
   if(members.length===0)return {items:[],count:0,page,pageSize,students:[]};
-  const ids=members.map(x=>x.id);
+  if(studentId&&!members.some(s=>s.id===studentId))throw Error('指定学生不属于当前可见班级');
+  const ids=studentId?[studentId]:members.map(x=>x.id);
   let q=client.from(def.table).select(def.fields,{count:'exact'});
   q=def.classScoped?q.eq('class_id',classId).in('student_id',ids):q.in('student_id',ids);
+  if(startOn)q=q.gte(def.date,startOn);
+  if(endOn)q=q.lte(def.date,endOn);
   const {data,error,count}=await q.order(def.date,{ascending:false}).order('id',{ascending:false}).range((page-1)*pageSize,page*pageSize-1);
   if(error)throw error;
   return {items:data??[],count:count??null,page,pageSize,students:members};
