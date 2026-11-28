@@ -31,3 +31,12 @@ assert.match(app,/canSubmit=\{canSubmit&&!Boolean\(uncertainSubmit/);
 assert.match(app,/canWrite=\{canWrite&&!Boolean\(uncertainReview/);
 assert.match(app,/if\(uncertainReview&&uncertainReview\.accountId===user\?\.id/);
 console.log('Alpha47 unresolved write scope guard: 4 assertions PASS');
+
+// Alpha 47: record identifiers in session storage BEFORE an async write can be interrupted.
+assert.match(app,/beginWriteIntent\(browserSessionStorage\(\),'submit'/);
+assert.match(app,/beginWriteIntent\(browserSessionStorage\(\),'review'/);
+assert.match(app,/finishKnownWrite\(browserSessionStorage\(\),'submit'/);
+assert.match(app,/finishKnownWrite\(browserSessionStorage\(\),'review'/);
+assert.match(app,/hasConfirmedAttendance\(records\)/);
+assert.doesNotMatch(app,/savePendingMarker\(/);
+console.log('Alpha47 pre-write intent and rejected-history contracts: 6 assertions PASS');
