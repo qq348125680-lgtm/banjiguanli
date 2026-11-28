@@ -1,8 +1,17 @@
 import {assertUuid} from './supabase-readonly-adapter.mjs';
 import {inboxDefinitions,assertInboxQueryResult,buildInboxSummary} from './event-task-inbox.mjs';
+import {schoolToday,validateSchoolDate,dueReminderDefinitions,verifyDueResponse,verifyWorkloadRows} from './case-deadline-model.mjs';
 
 export const CASE_KINDS=Object.freeze(['考勤','请假','违纪','积分','值日','家校沟通','其他']);
 export const CASE_STATES=Object.freeze(['待分派','处理中','待复核','已结案']);
+export function validateDeadlineMutation(caseId,dueOn,expectedDueOn,note){
+ assertUuid(caseId);
+ validateSchoolDate(dueOn,true);
+ validateSchoolDate(expectedDueOn,true);
+ if(typeof note!=='string'||note.trim().length<2||note.trim().length>500)
+  throw Error('调整处理期限需要填写2至500字的原因');
+ return {p_case_id:caseId,p_due_on:dueOn,p_expected_due_on:expectedDueOn,p_note:note.trim()};
+}
 function validPage(page,size){if(!Number.isSafeInteger(page)||page<1||page>10000||![5,10,20].includes(size))throw Error('工单分页参数无效')}
 export function validateCaseInput({classId,studentId,kind,title,description='',requestKey,sourceRecordId=''}){
  assertUuid(classId);assertUuid(studentId);assertUuid(requestKey);
@@ -32,7 +41,7 @@ export function createEventCaseApi(client){
   if(caseId)assertUuid(caseId);
   if(assignedTo)assertUuid(assignedTo);
   if(createdBy)assertUuid(createdBy);
-  let q=client.from('v7_event_cases').select('id,class_id,student_id,kind,title,description,status,assigned_to,created_by,created_at,updated_at,closed_at',{count:'exact'}).eq('class_id',classId);
+  let q=client.from('v7_event_cases').select('id,class_id,student_id,kind,title,description,status,assigned_to,created_by,due_on,created_at,updated_at,closed_at',{count:'exact'}).eq('class_id',classId);
   if(status!=='全部')q=q.eq('status',status);
   if(studentId)q=q.eq('student_id',studentId);
   if(caseId)q=q.eq('id',caseId);
@@ -56,6 +65,50 @@ export function createEventCaseApi(client){
   }));
   const counts=Object.fromEntries(pairs);
   return {counts,total:CASE_STATES.reduce((sum,status)=>sum+counts[status],0)};
+ }
+ /** Due date indicators are manual-refresh, not push notifications.
+  * Owner sees all class cases; cadres see only cases assigned to themselves.
+  */
+ async function dueDigest(classId){
+  const u=await user();assertUuid(classId);
+  const {data:cls,error:ce}=await client.from('classes').select('id')
+   .eq('id',classId).eq('owner_id',u.id).maybeSingle();
+  if(ce)throw ce;
+  const owned=Boolean(cls);
+  if(!owned){
+   const {data:delegated,error:de}=await client.from('class_delegates')
+    .select('id').eq('class_id',classId).eq('user_id',u.id).eq('enabled',true).maybeSingle();
+   if(de)throw de;if(!delegated)throw Error('当前账号没有待办访问权限');
+  }
+  const today=schoolToday();
+  const groups=await Promise.all(dueReminderDefinitions(today).map(async(group)=>{
+   let q=client.from('v7_event_cases')
+    .select('id,class_id,student_id,title,kind,status,assigned_to,due_on',{count:'exact'})
+    .eq('class_id',classId).neq('status','已结案');
+   if(!owned)q=q.eq('assigned_to',u.id);
+   if(group.comparison==='lt')q=q.lt('due_on',group.until);
+   else if(group.comparison==='eq')q=q.eq('due_on',group.until);
+   else q=q.gt('due_on',group.from).lte('due_on',group.until);
+   const response=await q.order('due_on',{ascending:true}).limit(5);
+   return verifyDueResponse(response,group,classId,owned?null:u.id);
+  }));
+  return {today,owned,groups,total:groups.reduce((n,g)=>n+g.count,0)};
+ }
+ /** One owner-only RPC aggregates all state/category/assignee totals. */
+ async function classOverview(classId){
+  await user();assertUuid(classId);
+  const {data,error}=await client.rpc('v7_class_case_overview',{p_class_id:classId});
+  if(error)throw error;
+  return verifyWorkloadRows(data,CASE_STATES,CASE_KINDS);
+ }
+ async function setDeadline(caseId,dueOn,expectedDueOn,note){
+  await user();
+  const params=validateDeadlineMutation(caseId,dueOn,expectedDueOn,note);
+  const {data,error}=await client.rpc('v7_set_case_deadline',params);
+  if(error)throw error;
+  if(!data||data.id!==caseId||data.due_on!==dueOn||!CASE_STATES.includes(data.status))
+   throw Error('处理期限变更没有得到服务器确认');
+  return data;
  }
  /** Class owner and current enabled delegate get their own actionable task
   * totals. Every bucket is a separate RLS-scoped database query.
@@ -107,7 +160,7 @@ export function createEventCaseApi(client){
  async function history(classId,caseId){
   await user();assertUuid(classId);assertUuid(caseId);
   const {data,error}=await client.from('v7_event_case_history')
-   .select('id,case_id,action,actor_id,from_status,to_status,previous_assignee,next_assignee,note,created_at')
+   .select('id,case_id,action,actor_id,from_status,to_status,previous_assignee,next_assignee,previous_due_on,next_due_on,note,created_at')
    .eq('class_id',classId).eq('case_id',caseId).order('created_at',{ascending:true}).limit(100);
   if(error)throw error;return data??[];
  }
@@ -142,5 +195,5 @@ export function createEventCaseApi(client){
   if(error)throw error;if(!data||data.id!==caseId||!CASE_STATES.includes(data.status))throw Error('工单变更结果未能核实');
   return data;
  }
- return Object.freeze({list,studentSummary,taskInbox,sourceLinks,history,assignees,findByRequestKey,create,transition});
+ return Object.freeze({list,studentSummary,taskInbox,dueDigest,classOverview,setDeadline,sourceLinks,history,assignees,findByRequestKey,create,transition});
 }
