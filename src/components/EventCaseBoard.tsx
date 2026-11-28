@@ -7,18 +7,19 @@ type CaseRow={id:string;class_id:string;student_id:string;kind:string;title:stri
 type CaseHistory={id:string;action:string;actor_id:string;from_status:string|null;to_status:string;note:string;created_at:string};
 type Candidate={user_id:string;student_id:string|null;duty:string;enabled:boolean};
 type Api={
- list:(classId:string,params:{page:number;pageSize:number;status:string})=>Promise<{items:CaseRow[];count:number|null}>;
+ list:(classId:string,params:{page:number;pageSize:number;status:string;studentId?:string;caseId?:string})=>Promise<{items:CaseRow[];count:number|null}>;
  history:(classId:string,caseId:string)=>Promise<CaseHistory[]>;
  assignees:(classId:string)=>Promise<Candidate[]>;
  create:(params:{classId:string;studentId:string;kind:string;title:string;description:string;requestKey:string})=>Promise<string>;
  findByRequestKey:(classId:string,requestKey:string)=>Promise<CaseRow|null>;
  transition:(id:string,action:string,assignee:string|null,note:string)=>Promise<{id:string;status:string}>;
 };
-type Props={api:Api;classId:string;userId:string;owned:boolean;canWrite:boolean;students:StudentItem[];onStudent:(id:string)=>void;initialDraft?:{studentId:string;kind:string;title:string}|null};
+type Props={api:Api;classId:string;userId:string;owned:boolean;canWrite:boolean;students:StudentItem[];onStudent:(id:string)=>void;initialDraft?:{studentId:string;kind:string;title:string}|null;initialStudentId?:string;initialCaseId?:string};
 const newKey=()=>crypto.randomUUID();
-export function EventCaseBoard({api,classId,userId,owned,canWrite,students,onStudent,initialDraft}:Props){
+export function EventCaseBoard({api,classId,userId,owned,canWrite,students,onStudent,initialDraft,initialStudentId='',initialCaseId=''}:Props){
  const [cases,setCases]=useState<CaseRow[]>([]),[count,setCount]=useState<number|null>(null);
  const [filter,setFilter]=useState('全部'),[page,setPage]=useState(1),[revision,setRevision]=useState(0);
+ const [studentScope,setStudentScope]=useState(initialStudentId),[caseScope,setCaseScope]=useState(initialCaseId);
  const [loading,setLoading]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const [studentId,setStudentId]=useState(initialDraft?.studentId??''),[kind,setKind]=useState(initialDraft&&CASE_KINDS.includes(initialDraft.kind)?initialDraft.kind:'考勤'),[title,setTitle]=useState(initialDraft?.title??''),[description,setDescription]=useState('');
  const [requestKey,setRequestKey]=useState(newKey),[uncertain,setUncertain]=useState(false);
@@ -30,17 +31,17 @@ export function EventCaseBoard({api,classId,userId,owned,canWrite,students,onStu
  const names=useMemo(()=>new Map(students.map(x=>[x.id,x.name])),[students]);
  const actors=useMemo(()=>new Map(candidates.map(c=>[c.user_id,c.student_id?(names.get(c.student_id)??c.duty):c.duty])),[candidates,names]);
  const load=async()=>{
-  const data=await withReadDeadline(()=>api.list(classId,{page,pageSize:10,status:filter}));
+  const data=await withReadDeadline(()=>api.list(classId,{page,pageSize:10,status:filter,studentId:studentScope,caseId:caseScope}));
   setCases(data.items);setCount(data.count);return true;
  };
  useEffect(()=>{
   const current=++seq.current;setCases([]);setCount(null);setLoading(true);setError('');
-  withReadDeadline(()=>api.list(classId,{page,pageSize:10,status:filter}))
+  withReadDeadline(()=>api.list(classId,{page,pageSize:10,status:filter,studentId:studentScope,caseId:caseScope}))
    .then(v=>{if(seq.current===current){setCases(v.items);setCount(v.count)}})
    .catch(()=>{if(seq.current===current)setError('工单列表无法读取，可能是独立测试库尚未安装事件模块；请核对授权与网络。')})
    .finally(()=>{if(seq.current===current)setLoading(false)});
   return ()=>{seq.current++};
- },[api,classId,page,filter,revision]);
+ },[api,classId,page,filter,studentScope,caseScope,revision]);
  useEffect(()=>{setPage(1)},[filter]);
  useEffect(()=>{
   setCandidates([]);setCandidateError('');
@@ -101,6 +102,7 @@ export function EventCaseBoard({api,classId,userId,owned,canWrite,students,onStu
  return <section className="panel case-board" aria-label="事件工单协作">
   <div className="panel-head"><div><h2>事件工单 · 协作闭环</h2><p>创建 → 指派负责人 → 处理反馈 → 班主任复核 → 结案归档</p></div><span className="count">{loading?'读取中':count===null?'总数未知':count+' 条工单'}</span></div>
   <p className="muted">本模块与原考勤、积分记录分开保存；所有状态变化写入处理流水。只在已安装事件工单迁移的授权测试环境开放业务写入。</p>
+  {(studentScope||caseScope)&&<div className="event-linked-scope"><span>{caseScope?'当前定位一个指定事件工单':'学生事件工单档案 · '+(names.get(studentScope)??'授权学生')}</span><button type="button" className="record-refresh" onClick={()=>{setStudentScope('');setCaseScope('');setPage(1);setFilter('全部')}}>查看全部工单</button></div>}
   {canWrite&&<form className="case-create" onSubmit={e=>{e.preventDefault();void create()}}>
    <strong>新建班级事件</strong>
    <div className="case-form-grid">
@@ -116,7 +118,7 @@ export function EventCaseBoard({api,classId,userId,owned,canWrite,students,onStu
    </div>
   </form>}
   {!canWrite&&<p className="notice">当前为只读模式；事件可查询，但不能创建、指派或结案。新建功能仅在独立环境验收后启用。</p>}
-  <div className="record-toolbar"><label>工单状态 <select value={filter} onChange={e=>setFilter(e.target.value)}><option>全部</option>{CASE_STATES.map(v=><option key={v}>{v}</option>)}</select></label><button type="button" className="record-refresh" disabled={loading} onClick={()=>setRevision(v=>v+1)}>重新读取</button></div>
+  <div className="record-toolbar"><label>工单状态 <select value={filter} onChange={e=>{setFilter(e.target.value);setCaseScope('')}}><option>全部</option>{CASE_STATES.map(v=><option key={v}>{v}</option>)}</select></label><button type="button" className="record-refresh" disabled={loading} onClick={()=>setRevision(v=>v+1)}>重新读取</button></div>
   {candidateError&&<p className="notice error" role="status">{candidateError}</p>}
   {error&&<p className="notice error" role="alert">{error}</p>}
   {notice&&<p className="notice success" role="status">{notice}</p>}
