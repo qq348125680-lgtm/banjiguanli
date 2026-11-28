@@ -14,5 +14,6 @@ test('App must clear immediately in class picker and preserve same-scope refresh
  const s=fs.readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');
  assert.ok(s.includes('decideSnapshot(loadedScopeRef.current,user.id,classId)'));
  assert.match(s,/onChange=\{e=>\{invalidateSelectedClass\(authorizationSeq,requestSeq\);setAuthorizationChecking\(false\);setLoading\(false\);setProblem\(''\);loadedScopeRef\.current=''/);
- assert.match(s,/可能已过期/);
+ assert.match(s,/已清除失败模块的上次结果/);
+ assert.match(s,/const recovery=decideReadFailure\(result,\{owned,view\}\)/);
 });
