@@ -58,10 +58,8 @@ jobs:
           if(js.includes('https://maqxyvqayilmibdrkmxu.supabase.co'))throw Error('Live project URL must not be in public safe preview');
           console.log('PASS: safe GitHub Pages build, subpath assets, no live DB config');
           NODE
-      - name: Configure GitHub Pages
+      - name: Configure GitHub Pages (repository owner must enable Pages first)
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - name: Upload static preview
         uses: actions/upload-pages-artifact@v4
         with:
