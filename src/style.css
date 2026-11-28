@@ -179,3 +179,13 @@
 .record-check-item label{display:flex;align-items:center;gap:8px;white-space:nowrap;color:#697c99;font-size:12px}
 .record-check-item input{min-width:18px;min-height:18px}
 @media(max-width:700px){.record-checks{padding:11px}.record-check-item{flex-direction:column;align-items:stretch}.record-check-item label{white-space:normal}}
+
+/* Alpha44: compact review triage without additional navigation levels. */
+.review-digest{display:flex;align-items:center;flex-wrap:wrap;gap:11px 20px;border:1px solid #e4eafa;background:#f8faff;border-radius:13px;padding:13px 16px;margin:15px 0}
+.review-digest>strong{font-size:13px;color:#405684}
+.review-digest>div{display:flex;gap:15px;flex-wrap:wrap;font-size:12px;color:#697b98}
+.review-digest b{color:#3b5593}
+.review-digest small{flex-basis:100%;font-size:11px;color:#7889a4}
+.review-page-hints{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}
+.review-page-hints span{font-size:12px;color:#85551c;background:#fff8ed;border:1px solid #f5e5c7;padding:6px 9px;border-radius:8px;overflow-wrap:anywhere}
+@media(max-width:700px){.review-digest{align-items:stretch;flex-direction:column;padding:12px;gap:9px}.review-digest>div{display:grid;grid-template-columns:1fr 1fr;gap:7px}.review-page-hints{flex-direction:column}}
