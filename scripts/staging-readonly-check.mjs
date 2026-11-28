@@ -3,7 +3,7 @@ import {createClient} from '@supabase/supabase-js';
 import {validateStagingReadOnlyTarget} from '../src/lib/staging-target-guard.mjs';
 import {createReadOnlyBridge} from '../src/lib/supabase-readonly-adapter.mjs';
 import {createSafeWorkflow} from '../src/lib/safe-workflow.mjs';
-import {assertRestrictedRead,assertOwnedSubmissionRows,requireForeignSyntheticFixture,assertNoForeignRows} from '../src/lib/staging-access-assertions.mjs';
+import {assertRestrictedRead,assertOwnedSubmissionRows,requireForeignSyntheticFixture,assertNoForeignRows,assertOwnerActiveStudents} from '../src/lib/staging-access-assertions.mjs';
 
 // Deliberately no INSERT, UPDATE, DELETE, UPSERT or audit writes.
 // Never log account credentials, tokens, student names or private rows.
@@ -60,6 +60,13 @@ try{
   assert.ok(Object.keys(row).every(k=>allowed.has(k)),'花名册 RPC 泄漏了超出允许范围的字段');
  }
  console.log('PASS: A 班花名册仅含学号、姓名、学生 UUID；不同账号结果一致');
+ // Positive control: RPC runs as SECURITY DEFINER; verify that the real
+ // class owner ALSO has expected direct students SELECT RLS privileges.
+ const ownerDirectStudents=await owner.from('students')
+  .select('id,class_id,archived_at')
+  .eq('class_id',config.classId).is('archived_at',null).limit(100);
+ assertOwnerActiveStudents(ownerDirectStudents,config.classId);
+ console.log('PASS: 班主任可直接读到至少两名本班虚构在读学生（非仅靠高权限 RPC）');
  const prohibited=[
   ['跨班',await cadre.rpc('v7_cadre_roster',{p_class_id:config.otherClassId})],
   ['无关账号',await outsider.rpc('v7_cadre_roster',{p_class_id:config.classId})],
@@ -94,7 +101,9 @@ try{
  ]);
  if(ownerDirect.error||!Array.isArray(ownerDirect.data))throw Error('班主任无法读取隔离测试申请样本');
  const foreignIds=requireForeignSyntheticFixture(ownerDirect.data,ids[1],config.classId);
- assertOwnedSubmissionRows(cadreDirect,ids[1],config.classId);
+ if(!ownerDirect.data.some(row=>row.submitted_by===ids[1]))throw Error('测试班缺少由当前干部提交的虚构申请，无法验证干部正向读取权限');
+ if(assertOwnedSubmissionRows(cadreDirect,ids[1],config.classId)<1)throw Error('班干部无法读取自己的虚构申请，不能据此宣称权限功能正常');
+ 
  assertNoForeignRows(cadreDirect.data,foreignIds);
  console.log('PASS: 利用另一测试账号的虚构申请，证明班干部无法越权读取他人的记录');
  console.log('STAGING READ-ONLY ACCEPTANCE PASS. No business writes executed.');
