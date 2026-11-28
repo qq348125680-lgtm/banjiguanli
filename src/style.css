@@ -216,3 +216,11 @@
 .review-cadre-actor{min-width:0;display:flex;flex-direction:column;gap:4px}
 .review-cadre-actor strong{font-size:12px;color:#40537c;overflow-wrap:anywhere}
 .review-cadre-actor code{font-size:11px;color:#8b97ad;overflow-wrap:anywhere}
+
+/* Alpha47: independent sidebar navigation scroll, preserving desktop layout.
+   The fixed mobile drawer and sticky desktop shell no longer compete with
+   the page scroll position on short screens. */
+.sidebar{overflow:hidden}
+.sidebar nav{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#d8dff0 transparent}
+.sidebar .brand,.sidebar .section-label,.sidebar .side-foot{flex-shrink:0}
+@media(max-height:520px){.sidebar .brand{padding-bottom:8px}.sidebar .section-label{padding-top:6px}.sidebar .sidebar-hint{display:none}}
