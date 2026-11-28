@@ -16,14 +16,18 @@ export function dutyWeight(area){
 }
 export function dutyWorkload(people,records){
  const map=new Map((Array.isArray(people)?people:[]).filter(s=>s?.id).map(s=>[s.id,{id:s.id,name:s.name??'',student_no:s.student_no??'',count:0,weight:0}]));
+ const seen=new Set();
  for(const record of Array.isArray(records)?records:[]){
+  // Repeated query rows for the same persisted assignment must not inflate fairness.
+  if(record?.id){if(seen.has(record.id))continue;seen.add(record.id)}
   const row=map.get(record?.student_id);
   if(row){row.count++;row.weight+=dutyWeight(record.area)}
  }
  return [...map.values()].sort((a,b)=>a.weight-b.weight||a.count-b.count||String(a.student_no).localeCompare(String(b.student_no),'zh-CN')||a.id.localeCompare(b.id));
 }
 export function proposeDutySubstitute({people,records,dutyDate,absentStudentId,excludedIds=/** @type {string[]} */ ([])}){
- if(!/^\d{4}-\d{2}-\d{2}$/.test(String(dutyDate??'')))throw Error('请先选择有效值日日期');
+ const date=new Date(String(dutyDate??'')+'T00:00:00Z');
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(String(dutyDate??''))||Number.isNaN(date.getTime())||date.toISOString().slice(0,10)!==dutyDate)throw Error('请先选择有效值日日期');
  if(!absentStudentId)throw Error('请选择需要替补的学生');
  const list=Array.isArray(records)?records:[];
  const original=list.find(x=>x.student_id===absentStudentId&&x.duty_date===dutyDate);
