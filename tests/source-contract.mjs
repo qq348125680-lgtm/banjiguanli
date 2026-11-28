@@ -23,3 +23,11 @@ assert.match(landing,/<title>智慧班级工作台 V7\.0 Alpha 47 · 安全技�
 assert.match(landing,/不连接学生数据，不开放业务写入/);
 assert.doesNotMatch(landing,/Alpha10|Alpha 10/);
 console.log('Alpha47 public landing metadata contract: 3 assertions PASS');
+
+// Alpha 47: one unresolved operation locks the whole class/date submit scope
+// or class review scope, preventing a later unknown result from overwriting its marker.
+assert.match(app,/uncertainSubmit\.studentId/); // pending student remains visible for reconciliation
+assert.match(app,/canSubmit=\{canSubmit&&!Boolean\(uncertainSubmit/);
+assert.match(app,/canWrite=\{canWrite&&!Boolean\(uncertainReview/);
+assert.match(app,/if\(uncertainReview&&uncertainReview\.accountId===user\?\.id/);
+console.log('Alpha47 unresolved write scope guard: 4 assertions PASS');
